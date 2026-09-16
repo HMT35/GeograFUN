@@ -1,0 +1,133 @@
+/* ============================================ */
+/* ANIMATIONS - Shared Keyframes                 */
+/* ============================================ */
+
+/* Fade transitions */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scale animations */
+@keyframes scaleIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes scaleOut {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(1.1); opacity: 0; }
+}
+
+/* Shake for incorrect */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* Pulse for correct */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.pulse {
+  animation: pulse 0.4s ease-in-out;
+}
+
+/* Flash overlay */
+@keyframes flashRed {
+  0% { background: rgba(245, 87, 108, 0); }
+  30% { background: rgba(245, 87, 108, 0.4); }
+  70% { background: rgba(245, 87, 108, 0.2); }
+  100% { background: rgba(245, 87, 108, 0); }
+}
+
+.flash-red {
+  animation: flashRed 1s ease-in-out;
+}
+
+@keyframes flashGreen {
+  0% { background: rgba(67, 233, 123, 0); }
+  30% { background: rgba(67, 233, 123, 0.4); }
+  70% { background: rgba(67, 233, 123, 0.2); }
+  100% { background: rgba(67, 233, 123, 0); }
+}
+
+.flash-green {
+  animation: flashGreen 1s ease-in-out;
+}
+
+/* White flash transition */
+@keyframes flashWhite {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.flash-white {
+  animation: flashWhite 0.8s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Slide card transitions */
+.card-enter-left {
+  animation: cardEnterLeft 0.5s ease-out;
+}
+
+.card-enter-right {
+  animation: cardEnterRight 0.5s ease-out;
+}
+
+@keyframes cardEnterLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes cardEnterRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Bounce elastic for card snap */
+@keyframes bounceElastic {
+  0% { transform: translateX(var(--swipe-distance)); }
+  40% { transform: translateX(0); }
+  70% { transform: translateX(calc(var(--swipe-distance) * -0.05)); }
+  100% { transform: translateX(0); }
+}
+
+/* Smooth scroll indicator pulse */
+@keyframes indicatorPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}

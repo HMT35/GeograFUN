@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <!-- Navy blue background -->
+  <rect width="192" height="192" rx="32" fill="#1a1a3e"/>
+  
+  <!-- Subtle stars -->
+  <g fill="#ffffff" opacity="0.3">
+    <circle cx="48" cy="52" r="2"/>
+    <circle cx="140" cy="40" r="1.5"/>
+    <circle cx="155" cy="80" r="2"/>
+    <circle cx="38" cy="110" r="1.5"/>
+    <circle cx="50" cy="150" r="1.8"/>
+    <circle cx="148" cy="140" r="1.5"/>
+  </g>
+  
+  <!-- Crescent moon (white circle cut by another circle) -->
+  <defs>
+    <mask id="moonMask">
+      <rect width="192" height="192" fill="white"/>
+      <!-- The erasing circle that creates the crescent -->
+      <circle cx="110" cy="78" r="44" fill="black"/>
+    </mask>
+  </defs>
+  
+  <!-- Moon body -->
+  <circle cx="82" cy="96" r="46" fill="#ffffff" mask="url(#moonMask)"/>
+  
+  <!-- Soft glow around moon -->
+  <circle cx="82" cy="96" r="52" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.15"/>
+</svg>

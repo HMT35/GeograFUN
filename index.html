@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="assets/icons/icon-192.svg" type="image/svg+xml" />
+  <title>GeograFUN</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/welcome.css" />
+  <link rel="stylesheet" href="css/menu.css" />
+  <link rel="stylesheet" href="css/game.css" />
+  <link rel="stylesheet" href="css/score.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+</head>
+<body>
+  <!-- ============================================ -->
+  <!-- WELCOME SCREEN                               -->
+  <!-- ============================================ -->
+  <section id="welcome-screen" class="screen active" role="dialog" aria-label="Bine ai venit">
+    <div class="welcome-container">
+      <div class="welcome-icon">
+        <svg viewBox="0 0 100 100" width="80" height="80">
+          <circle cx="50" cy="50" r="45" fill="none" stroke="#fff" stroke-width="2" class="globe-circle" />
+          <ellipse cx="50" cy="50" rx="40" ry="20" fill="none" stroke="#fff" stroke-width="1" class="globe-ellipse" />
+          <line x1="10" y1="50" x2="90" y2="50" stroke="#fff" stroke-width="0.5" class="globe-line" />
+          <line x1="50" y1="10" x2="50" y2="90" stroke="#fff" stroke-width="0.5" />
+          <path d="M25,25 Q50,40 75,25" fill="none" stroke="#fff" stroke-width="0.5" />
+          <path d="M25,75 Q50,60 75,75" fill="none" stroke="#fff" stroke-width="0.5" />
+        </svg>
+      </div>
+      <h1 class="welcome-title">Bine ai venit</h1>
+      <p class="welcome-subtitle">GeograFUN</p>
+      <p class="welcome-description">Învață geografia interactiv</p>
+      <div class="welcome-loader">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <!-- MENU / HOME SCREEN                          -->
+  <!-- ============================================ -->
+  <section id="menu-screen" class="screen" role="main" aria-label="Meniu principal">
+    <div class="menu-topbar">
+      <button id="theme-toggle-menu" class="theme-toggle" type="button" aria-label="Comută tema">
+        <img class="theme-icon" src="assets/icons/theme-moon.svg" alt="" />
+      </button>
+      <button id="options-toggle" class="options-toggle" type="button" aria-expanded="false" aria-controls="options-panel" aria-label="Deschide opțiunile">⚙</button>
+      <h2 class="menu-logo">GeograFUN</h2>
+      <span class="menu-region" id="menu-region">Europa</span>
+    </div>
+
+    <aside id="options-panel" class="options-panel" hidden aria-label="Opțiuni">
+      <h3>Opțiuni</h3>
+      <p>Mai multe opțiuni vor fi disponibile aici.</p>
+      <div class="options-placeholder" aria-hidden="true">În curând</div>
+    </aside>
+
+    <!-- Cardurile sunt generate din js/datasets.config.js -->
+    <div class="menu-stage" id="menu-stage"></div>
+
+    <div class="dots" id="dots-col"></div>
+    <div class="dots dots-vertical" id="dots-row"></div>
+  </section>
+
+  <!-- ============================================ -->
+  <!-- GAME SCREEN (Map Viewer)                    -->
+  <!-- ============================================ -->
+  <section id="game-screen" class="screen" role="main" aria-label="Joc">
+    <header class="game-header">
+      <button class="back-btn" id="game-back" aria-label="Înapoi la meniu">←</button>
+      <h3 class="game-title" id="game-title">Încărcare...</h3>
+      <button id="theme-toggle-game" class="theme-toggle" type="button" aria-label="Comută tema">
+        <img class="theme-icon" src="assets/icons/theme-moon.svg" alt="" />
+      </button>
+      <span class="game-timer" id="game-timer">00:00</span>
+    </header>
+
+    <div id="map-container" class="map-container">
+      <div id="map" class="map"></div>
+      <!-- Pin drop zone overlay -->
+      <div class="pin-drop-zone" id="pin-zone">
+        <div class="pin-marker" id="pin-marker">
+          <div class="pin-head">📌</div>
+          <div class="pin-connector"></div>
+          <div class="pin-base"></div>
+        </div>
+      </div>
+      <!-- Question overlay -->
+      <div class="question-banner" id="question-banner">
+        <span class="question-number" id="question-number">1/10</span>
+        <span class="question-text" id="question-text">Selectează: Franța</span>
+        <button id="data-retry" type="button" hidden>Reîncearcă</button>
+        <button id="data-menu" type="button" hidden>Meniu</button>
+      </div>
+    </div>
+
+    <div class="game-actions" id="game-actions">
+      <button class="pin-button" id="pin-button" aria-label="Plasează pin">
+        <span class="pin-btn-icon">📌</span>
+        <span class="pin-btn-text">Ține apăsat pentru a plasa</span>
+      </button>
+      <button class="confirm-button" id="confirm-button" type="button" hidden disabled aria-label="Confirmă răspunsul">
+        <span class="confirm-btn-icon">✓</span>
+        <span class="confirm-btn-text">Confirmă</span>
+      </button>
+    </div>
+
+  </section>
+
+  <!-- ============================================ -->
+  <!-- SCORE SCREEN                                -->
+  <!-- ============================================ -->
+  <section id="score-screen" class="screen" role="dialog" aria-label="Rezultat">
+    <div class="score-container">
+      <div class="score-card">
+        <div class="score-header">
+          <h3 class="score-title">Rezultat final</h3>
+        </div>
+        <div class="score-circle" id="score-circle">
+          <div class="score-percentage" id="score-percentage">75%</div>
+          <div class="score-detail" id="score-detail">34 / 45</div>
+        </div>
+        <div class="score-stats">
+          <div class="stat-item">
+            <span class="stat-label">Timp total</span>
+            <span class="stat-value" id="score-time">02:34</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Corecte</span>
+            <span class="stat-value correct" id="score-correct">34</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Greșite</span>
+            <span class="stat-value incorrect" id="score-incorrect">11</span>
+          </div>
+        </div>
+        <div class="score-buttons">
+          <button class="btn btn-primary" id="score-replay">🔄 Rejoacă</button>
+          <button class="btn btn-secondary" id="score-menu">🏠 Meniu</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <!-- SCRIPTS                                     -->
+  <!-- ============================================ -->
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  
+  <!-- Custom JS -->
+  <script src="js/theme.js"></script>
+  <script src="js/datasets.config.js"></script>
+  <script src="js/data-loader.js"></script>
+  <script src="js/welcome.js"></script>
+  <script src="js/menu.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/pin.js"></script>
+  <script src="js/modes/registry.js"></script>
+  <script src="js/modes/polygon-mode.js"></script>
+  <script src="js/modes/point-mode.js"></script>
+  <script src="js/modes/line-mode.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/scoring.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

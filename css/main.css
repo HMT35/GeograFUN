@@ -1,0 +1,166 @@
+/* ============================================ */
+/* CSS RESET + BASE                              */
+/* ============================================ */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:root {
+  --bg-primary: #0a0a1a;
+  --bg-secondary: #1a1a2e;
+  --bg-card: #16213e;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0c0;
+  --accent-blue: #4facfe;
+  --accent-purple: #667eea;
+  --accent-green: #43e97b;
+  --accent-red: #f5576c;
+  --accent-yellow: #fddb92;
+  
+  --card-width: min(72vw, 320px);
+  --card-height: calc(var(--card-width) * 1.45);
+  --card-gap: 16px;
+  --polaroid-padding: 12px;
+  --polaroid-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  --surface: rgba(255, 255, 255, 0.08);
+  --surface-border: rgba(255, 255, 255, 0.12);
+  --overlay: rgba(0, 0, 0, 0.78);
+  --header-bg: rgba(10, 10, 26, 0.95);
+  --polaroid-bg: #f7f5f0;
+  --polaroid-text: #2a2a35;
+  --map-bg: #0a0a1a;
+  --ambient: rgba(102, 126, 234, 0.18);
+}
+
+/* ---------- TEMA LUMINOASĂ ---------- */
+[data-theme="light"] {
+  --bg-primary: #eef1f8;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --text-primary: #17182a;
+  --text-secondary: #5b5f7a;
+  --accent-blue: #2b7fd4;
+  --accent-purple: #5b62c9;
+  --accent-green: #1fa463;
+  --accent-red: #d63b52;
+  --accent-yellow: #d79b1e;
+
+  --surface: rgba(23, 24, 42, 0.06);
+  --surface-border: rgba(23, 24, 42, 0.12);
+  --overlay: rgba(255, 255, 255, 0.9);
+  --header-bg: rgba(255, 255, 255, 0.92);
+  --polaroid-bg: #ffffff;
+  --polaroid-text: #17182a;
+  --map-bg: #eef1f8;
+  --ambient: rgba(43, 127, 212, 0.16);
+}
+
+html, body, .screen {
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+/* Toggle dark / light - inline (topbar meniu si header joc) */
+.theme-toggle {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  color: var(--text-primary);
+  pointer-events: auto;
+  overflow: hidden;
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+
+.theme-toggle .theme-icon {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: 50%;
+  clip-path: circle(50% at 50% 50%);
+  pointer-events: none;
+}
+
+
+.theme-toggle:hover { transform: rotate(-12deg) scale(1.08); }
+.theme-toggle:active { transform: scale(0.92); }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: none;
+  z-index: 1;
+}
+
+.screen.active {
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+
+button {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+  outline: none;
+}
+
+button:focus-visible {
+  outline: 3px solid var(--accent-blue);
+  outline-offset: 3px;
+}
+
+/* Scrollbar hide */
+::-webkit-scrollbar { display: none; }
+
+/* Responsive */
+@media (min-width: 768px) {
+  :root {
+      --card-width: min(44vw, 340px);
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+      --card-width: min(28vw, 380px);
+  }
+}
+
+/* Keep the card fully visible on short screens */
+@media (max-height: 720px) {
+  :root {
+    --card-height: min(68vh, calc(var(--card-width) * 1.45));
+  }
+}

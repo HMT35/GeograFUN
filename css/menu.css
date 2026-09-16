@@ -1,0 +1,432 @@
+/* ============================================ */
+/* MENU SCREEN - Seamless single centered card   */
+/* ============================================ */
+#menu-screen {
+  background: var(--bg-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ambient background glow follows the active card */
+#menu-screen::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(circle at 50% 45%, var(--ambient), transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.6s ease;
+}
+
+/* Minimal floating topbar (no chrome, no grid) */
+.menu-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-top: calc(18px + var(--safe-top));
+  z-index: 20;
+  pointer-events: none;
+}
+
+/* Toggle-ul de tema, in dreapta topbar-ului meniului */
+.menu-topbar .theme-toggle {
+  position: absolute;
+  top: calc(14px + var(--safe-top));
+  right: 16px;
+}
+
+.options-toggle {
+  position: absolute;
+  top: calc(14px + var(--safe-top));
+  left: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  pointer-events: auto;
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+
+.options-toggle[aria-expanded="true"] { transform: rotate(45deg); }
+
+.options-panel {
+  position: absolute;
+  top: calc(68px + var(--safe-top));
+  left: 16px;
+  width: min(82vw, 320px);
+  padding: 18px;
+  z-index: 50;
+  color: var(--text-primary);
+  background: var(--header-bg);
+  border: 1px solid var(--surface-border);
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(18px);
+}
+
+.options-panel[hidden] { display: none; }
+.options-panel { transition: opacity .22s ease, transform .22s ease; }
+.options-panel.is-closing { opacity: 0; transform: translateY(-10px); }
+.options-panel h3 { margin-bottom: 8px; font-size: 1rem; }
+.options-panel p { color: var(--text-secondary); font-size: 0.86rem; line-height: 1.45; }
+.options-placeholder {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px dashed var(--surface-border);
+  border-radius: 12px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.menu-logo {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #4facfe, #667eea);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.menu-region {
+  font-size: 0.7rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  transition: opacity 0.3s;
+}
+
+/* STAGE: full screen, card is absolutely centered */
+.menu-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  touch-action: none;
+  overflow: hidden;
+  perspective: 1400px;
+}
+
+/* CARD: centered via translate(-50%,-50%) on the stage center */
+.card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--card-width);
+  height: var(--card-height);
+  margin-left: calc(var(--card-width) / -2);
+  margin-top: calc(var(--card-height) / -2);
+  cursor: grab;
+  touch-action: none;
+  backface-visibility: hidden;
+  /* will-change se pune din JS doar pe durata gestului (vezi Menu.setWillChange),
+     ca sa nu tinem 5 layere de textura permanent in memorie.
+     Doar 'layout': 'paint' ar decupa umbra care iese in afara cardului. */
+  contain: layout;
+}
+
+.card:active {
+  cursor: grabbing;
+}
+
+/* Desktop: nu exista drag, doar click pentru a selecta cardul */
+.menu-stage.is-desktop .card,
+.menu-stage.is-desktop .card:active {
+  cursor: pointer;
+}
+
+/* Cardul central e deja selectat: click pe el intra in joc */
+.menu-stage.is-desktop { touch-action: auto; }
+
+.card-polaroid {
+  width: 100%;
+  height: 100%;
+  background: var(--polaroid-bg);
+  border-radius: 3px;
+  padding: var(--polaroid-padding);
+  padding-bottom: 48px;
+  /* Blur mare = zona pictata mult peste card, recalculata la fiecare
+     schimbare de scale. 28px arata aproape identic si costa mult mai putin. */
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.5),
+    0 3px 8px rgba(0, 0, 0, 0.32);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.65s cubic-bezier(.22,.8,.25,1), box-shadow 0.45s ease;
+}
+
+.card-face {
+  position: absolute;
+  inset: var(--polaroid-padding) var(--polaroid-padding) 48px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.card-front {
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 52px var(--polaroid-padding) 48px;
+}
+.card-front .card-image { flex: 1; }
+
+.card-back {
+  inset: 0;
+  padding: 30px 24px 66px;
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  color: var(--polaroid-text);
+  background: var(--polaroid-bg);
+  border-radius: 3px;
+}
+
+.card.is-flipped { z-index: 45 !important; }
+.card.is-flipped .card-inner { transform: rotateY(180deg); box-shadow: 0 22px 60px rgba(0,0,0,.58); }
+.card.is-flipped .card-flip-tab span { transform: rotate(180deg); }
+
+.card-flip-tab {
+  position: absolute;
+  left: 18px;
+  top: -34px;
+  width: 62px;
+  height: 36px;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  color: var(--polaroid-text);
+  background: var(--polaroid-bg);
+  border-radius: 13px 13px 0 0;
+  border: 1px solid rgba(255,255,255,.22);
+  border-bottom: 0;
+  box-shadow: 0 -5px 14px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.75);
+  touch-action: manipulation;
+}
+
+.card-flip-tab span {
+  display: block;
+  font-size: 1.35rem;
+  line-height: 1;
+  transition: transform 0.55s cubic-bezier(.22,.8,.25,1);
+}
+
+.card-info-icon { font-size: 3rem; margin-bottom: 12px; }
+.card-back h3 { font-size: 1.25rem; text-align: center; }
+.card-fact {
+  margin: 20px 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  text-align: center;
+}
+.card-stats { width: 100%; margin-top: auto; }
+.card-stats section + section { margin-top: 14px; }
+.card-stats h4 { margin-bottom: 6px; font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: #717180; }
+.card-stats ol { list-style: none; padding: 0; margin: 0; }
+.card-stats li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: .78rem; border-top: 1px solid rgba(127,127,127,.22); }
+.card-stats strong { white-space: nowrap; }
+.card-stats .empty-stat { color: #717180; font-style: italic; }
+.card-stats small { display: block; margin-top: 10px; color: #717180; text-align: center; font-size: .68rem; }
+
+.card-image {
+  width: 100%;
+  flex: 1;
+  border-radius: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+}
+
+/* Vignetare doar peste placeholder (gradient + iconita).
+   Poza sta deasupra, deci ramane nealterata. */
+.card-image.has-photo {
+  /* poza acopera tot: gradientul de sub ea nu mai trebuie pictat */
+  background-image: none !important;
+}
+
+.card-image.has-photo::after,
+.card-image.has-photo .card-icon {
+  display: none;
+}
+
+.card-image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.35) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card-icon {
+  font-size: 3.5rem;
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.35));
+  z-index: 1;
+}
+
+/* Fotografia propriu-zisa: acopera complet placeholderul.
+   Daca fisierul lipseste, imaginea e scoasa din DOM (onerror)
+   si ramane vizibil gradientul + iconita de dedesubt. */
+.card-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.card-photo.is-loaded {
+  opacity: 1;
+}
+
+.card-label {
+  position: absolute;
+  left: 12px;
+  right: 58px;
+  bottom: 14px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--polaroid-text);
+  letter-spacing: 0.3px;
+  font-family: 'Segoe Script', 'Bradley Hand', cursive, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 6;
+  pointer-events: none;
+  background: var(--polaroid-bg);
+  padding: 3px 4px;
+  border-radius: 4px;
+}
+
+/* Buton "joacă" din marginea de jos a polaroidului - aspect de hârtie */
+.card-play {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  min-width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: #3a3a48;
+  background: #fffdf7;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 2px 6px 2px 6px;
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.12),
+    0 3px 6px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transform: rotate(-1.5deg);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  z-index: 5;
+}
+
+/* Butonul de intrare ramane in banda alba de jos, niciodata peste fotografie. */
+.card-front .card-play {
+  bottom: 4px;
+  z-index: 10;
+}
+
+.card-play::before {
+  /* colț îndoit de hârtie */
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(225deg, rgba(0,0,0,0.14) 0%, rgba(0,0,0,0.04) 50%, transparent 50%);
+}
+
+.card-play:hover {
+  background: #ffffff;
+  transform: rotate(-1.5deg) translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.12),
+    0 6px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.card-play:active {
+  transform: rotate(-1.5deg) translateY(1px) scale(0.96);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* Glow states for completed games */
+.card.glow-green .card-polaroid {
+  box-shadow: 0 0 24px rgba(67, 233, 123, 0.55), 0 12px 28px rgba(0,0,0,0.45);
+}
+.card.glow-yellow .card-polaroid {
+  box-shadow: 0 0 24px rgba(253, 219, 146, 0.55), 0 12px 28px rgba(0,0,0,0.45);
+}
+.card.glow-red .card-polaroid {
+  box-shadow: 0 0 24px rgba(245, 87, 108, 0.55), 0 12px 28px rgba(0,0,0,0.45);
+}
+
+.dots {
+  position: absolute;
+  bottom: calc(24px + var(--safe-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 25;
+}
+
+.dots-vertical {
+  bottom: auto;
+  left: auto;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  flex-direction: column;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--surface-border);
+  transition: background 0.3s, transform 0.3s;
+}
+
+.dot.active {
+  background: var(--accent-blue);
+  transform: scale(1.4);
+}
