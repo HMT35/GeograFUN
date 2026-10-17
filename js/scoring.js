@@ -3,6 +3,7 @@
 /* ============================================ */
 const Scoring = {
   results: {},
+  storageUnavailable: false,
   
   async show({ gameId, correct, incorrect, total, time, analytics }) {
     const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
@@ -62,10 +63,13 @@ const Scoring = {
     });
     this.results[gameId] = { ...result, sessions: sessions.slice(-2) };
     // Persist to localStorage
-    try {
-      localStorage.setItem('geografun-results', JSON.stringify(this.results));
-    } catch (e) {
-      console.warn('Could not save results:', e);
+    if (!this.storageUnavailable) {
+      try {
+        localStorage.setItem('geografun-results', JSON.stringify(this.results));
+      } catch (e) {
+        this.storageUnavailable = true;
+        console.info('Rezultatele sunt păstrate doar pe durata sesiunii; stocarea este blocată.');
+      }
     }
   },
 
@@ -101,7 +105,8 @@ const Scoring = {
         this.results = JSON.parse(saved);
       }
     } catch (e) {
-      console.warn('Could not load results:', e);
+      this.storageUnavailable = true;
+      console.info('Rezultatele sunt păstrate doar pe durata sesiunii; stocarea este blocată.');
     }
   },
   

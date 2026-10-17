@@ -13,7 +13,8 @@ const DatasetsConfig = {
     rivers:    'assets/data/raw/rauri_export.json',
     countries: 'assets/data/raw/tari_export.json',
     capitals:  'assets/data/raw/capitale_export.geojson',
-    seats:     'assets/data/raw/resedinte_judet_export.geojson'
+    seats:     'assets/data/raw/resedinte_judet_export.geojson',
+    marineEurope: 'assets/data/marine-regions/seavox-europe.geojson'
   },
 
   /* Definitiile exercitiilor */
@@ -29,7 +30,15 @@ const DatasetsConfig = {
       icon: '🌍',
       funFact: 'Rusia se întinde pe 11 fusuri orare.',
       gradient: 'linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%)',
+      image: 'assets/images/backgrounds/world-countries.jpg',
       nameField: ['name:ro', 'name:en', 'name'],
+      nameFix: {
+        'Cape Verde': 'Capul Verde',
+        'Elveţia': 'Elveția',
+        'eSwatini': 'Eswatini',
+        'Republica Democrată Congo': 'Republica Democratică Congo',
+        'São Tomé and Príncipe': 'São Tomé și Príncipe'
+      },
       dropNullGeometry: true,
       /* Exportul admin_level=2 include si teritorii dependente. */
       exclude: [
@@ -39,13 +48,12 @@ const DatasetsConfig = {
         'Insulele Feroe', 'Insulele Pitcairn', 'Insulele Turks şi Caicos', 'Montserrat',
         'Niue', 'Saint Helena, Ascension and Tristan da Cunha',
         'Teritoriul Britanic din Oceanul Indian', 'Tokelau',
-        /* Kosovo nu este inclus în lista de state folosită de acest joc. */
-        'Kosovo'
       ],
       /* Groenlanda este teritoriu autonom al Danemarcei: apare pe harta
          Danemarcei, dar nu este o intrebare separata. */
       associatedTerritories: {
-        'Danemarca': ['Groenlanda']
+        'Danemarca': ['Groenlanda'],
+        'Serbia': ['Kosovo']
       },
       view: { center: [18, 10], zoom: 2, minZoom: 1 }
     },
@@ -102,6 +110,8 @@ const DatasetsConfig = {
       nameField: ['name:ro', 'name'],
       /* segmentele cu acelasi nume se unesc intr-un MultiLineString */
       mergeByName: true,
+      /* Râuri omonime: păstrăm relația lungă, nu afluenții omonimi. */
+      wikidataByName: { 'Bistrița': 'Q767793', 'Timiș': 'Q214894' },
       /* Whitelist: raurile cerute la bacalaureat.
          Fara ea ar aparea 232 de paraie irelevante. */
       include: [
@@ -157,11 +167,64 @@ const DatasetsConfig = {
         'Egipt', 'Egypt', 'Israel', 'Iordania', 'Jordan', 'Liban', 'Lebanon',
         'Arabia Saudită', 'Saudi Arabia', 'Kuweit', 'Kuwait', 'Kazahstan',
         'Armenia', 'Azerbaidjan', 'Georgia',
-        'Gibraltar', 'Guernsey', 'Insula Jersey', 'Insula Man', 'Insulele Feroe'
+        'Gibraltar', 'Guernsey', 'Insula Jersey', 'Insula Man', 'Insulele Feroe',
+        'Kosovo*', 'Republica Kosovo'
       ],
       /* Vatican are geometry: null in export */
       dropNullGeometry: true,
+      associatedTerritories: {
+        'Serbia': ['Kosovo']
+      },
       view: { center: [54.0, 15.0], zoom: 4 }
+    },
+
+    'europe-marine': {
+      source: 'marineEurope',
+      kind: 'marine',
+      region: 'europe',
+      title: 'Mări, golfuri și strâmtori',
+      icon: '🌊',
+      funFact: 'Strâmtoarea Gibraltar unește Oceanul Atlantic cu Marea Mediterană.',
+      gradient: 'linear-gradient(135deg, #006b8f 0%, #50c9c3 100%)',
+      image: 'assets/images/backgrounds/europe-marine.jpg',
+      nameField: ['name'],
+      /* Doar repere europene identificabile: nu toate golfurile locale SeaVoX. */
+      include: [
+        'NORTH SEA', 'IRISH SEA', 'NORWEGIAN SEA', 'BARENTS SEA', 'WHITE SEA',
+        'BLACK SEA', 'CASPIAN SEA', 'SEA OF AZOV', 'ADRIATIC SEA', 'AEGEAN SEA',
+        'IONIAN SEA', 'TYRRHENIAN SEA', 'LIGURIAN SEA', 'ALBORAN SEA',
+        'BALEARIC SEA', 'SEA OF MARMARA', 'CENTRAL BALTIC SEA',
+        'MEDITERRANEAN SEA',
+        'BAY OF BISCAY', 'GULF OF FINLAND', 'GULF OF RIGA',
+        'ENGLISH CHANNEL', 'DOVER STRAIT', 'STRAIT OF GIBRALTAR',
+        'SKAGERRAK', 'KATTEGAT', 'THE SOUND'
+      ],
+      nameFix: {
+        'NORTH SEA': 'Marea Nordului', 'IRISH SEA': 'Marea Irlandei',
+        'NORWEGIAN SEA': 'Marea Norvegiei', 'BARENTS SEA': 'Marea Barents',
+        'WHITE SEA': 'Marea Albă', 'BLACK SEA': 'Marea Neagră',
+        'CASPIAN SEA': 'Marea Caspică',
+        'SEA OF AZOV': 'Marea Azov', 'ADRIATIC SEA': 'Marea Adriatică',
+        'AEGEAN SEA': 'Marea Egee', 'IONIAN SEA': 'Marea Ionică',
+        'TYRRHENIAN SEA': 'Marea Tireniană', 'LIGURIAN SEA': 'Marea Ligurică',
+        'ALBORAN SEA': 'Marea Alboran', 'BALEARIC SEA': 'Marea Balearelor',
+        'SEA OF MARMARA': 'Marea Marmara', 'CENTRAL BALTIC SEA': 'Marea Baltică',
+        'MEDITERRANEAN SEA': 'Marea Mediterană',
+        'BAY OF BISCAY': 'Golful Biscaya', 'GULF OF FINLAND': 'Golful Finlandei',
+        'GULF OF RIGA': 'Golful Riga', 'ENGLISH CHANNEL': 'Canalul Mânecii',
+        'DOVER STRAIT': 'Strâmtoarea Dover / Calais',
+        'STRAIT OF GIBRALTAR': 'Strâmtoarea Gibraltar',
+        'SKAGERRAK': 'Strâmtoarea Skagerrak',
+        'KATTEGAT': 'Strâmtoarea Kattegat', 'THE SOUND': 'Strâmtoarea Øresund'
+      },
+      pointNames: ['DOVER STRAIT', 'STRAIT OF GIBRALTAR',
+        'SKAGERRAK', 'KATTEGAT', 'THE SOUND'],
+      pointCenters: {
+        'DOVER STRAIT': [51.0, 1.45], 'STRAIT OF GIBRALTAR': [35.96, -5.55],
+        'SKAGERRAK': [58.4, 9.1],
+        'KATTEGAT': [56.7, 11.3], 'THE SOUND': [55.85, 12.65]
+      },
+      view: { center: [53, 13], zoom: 4, minZoom: 2 }
     },
 
     'europe-capitals': {
@@ -177,7 +240,7 @@ const DatasetsConfig = {
       /* whitelist: doar capitalele statelor europene */
       include: [
         'București', 'Sofia', 'Belgrad', 'Beograd', 'Zagreb', 'Ljubljana',
-        'Sarajevo', 'Podgorica', 'Priștina', 'Prishtinë', 'Skopje', 'Tirana',
+        'Sarajevo', 'Podgorica', 'Skopje', 'Tirana',
         'Atena', 'Athina', 'Roma', 'Valletta', 'Vaduz', 'Berna', 'Bern',
         'Viena', 'Wien', 'Bratislava', 'Budapesta', 'Budapest', 'Praga',
         'Praha', 'Varșovia', 'Warszawa', 'Berlin', 'Copenhaga', 'København',
@@ -191,7 +254,6 @@ const DatasetsConfig = {
       /* normalizarea numelor catre forma romaneasca */
       nameFix: {
         'Beograd': 'Belgrad',
-        'Prishtinë': 'Priștina',
         'Athina': 'Atena',
         'Bern': 'Berna',
         'Wien': 'Viena',
@@ -223,7 +285,7 @@ const DatasetsConfig = {
      Muntii Europei / unitatile de relief lipsesc (nu avem seturi de date). */
   menu: [
     ['world-countries'],
-    ['europe-countries', 'europe-capitals'],
+    ['europe-countries', 'europe-capitals', 'europe-marine'],
     ['romania-counties', 'romania-capitals', 'romania-rivers']
   ],
 

@@ -28,6 +28,7 @@ const Game = {
 
   async start(gameId) {
     if (this.loadController) this.loadController.abort();
+    this.clearFeedback();
     this.loadController = new AbortController();
     const session = ++this.session;
     this.gameId = gameId;
@@ -48,6 +49,8 @@ const Game = {
 
     this.showScreen('game-screen');
     document.getElementById('game-title').textContent = cfg.title;
+    document.getElementById('country-credit').hidden =
+      gameId !== 'europe-countries' && gameId !== 'world-countries';
     document.getElementById('game-timer').textContent = '00:00';
     this.setBanner('Se încarcă datele…', '');
     const retry = document.getElementById('data-retry');
@@ -91,38 +94,23 @@ const Game = {
 
   /* ---------- Input ---------- */
   setupInput() {
-    const pinBtn = document.getElementById('pin-button');
     const confirmBtn = document.getElementById('confirm-button');
     const actions = document.getElementById('game-actions');
 
     /* Confirmarea previne tap-urile accidentale dupa panare pe touchscreen.
        Cu mouse/trackpad selectia este suficient de precisa si se trimite direct. */
     this.requiresConfirmation = window.matchMedia('(pointer: coarse), (hover: none)').matches;
-    if (!this.confirmBound) {
+    if (!this.confirmBound && confirmBtn) {
       confirmBtn.addEventListener('click', () => {
         this.playSound('click');
         this.confirm();
       });
       this.confirmBound = true;
     }
-    if (this.mode.usesPin) {
-      actions.style.display = '';
-      pinBtn.style.display = '';
-      PinControl.init();
-      PinControl.enable(latlng => {
-        if (!this.isPlaying || this.locked) return;
-        this.onSelect({ latlng });
-        if (this.mode.submitPin) this.mode.submitPin(latlng);
-      });
-      this.setPinLabel('Ține apăsat pentru a plasa');
-      pinBtn.classList.remove('next-mode');
-    } else {
-      /* selectia se face direct pe harta */
-      actions.style.display = 'none';
-      pinBtn.style.display = 'none';
-      PinControl.disable();
-    }
-
+    /* Polygon/point/line: selecția vine exclusiv din geometria hărții.
+       Pe touch confirmarea apare după tap; pe desktop răspunsul se trimite
+       imediat. Nu există și nu inițializăm zona de pin. */
+    if (actions) actions.style.display = 'none';
     this.setConfirmState(false);
   },
 
@@ -137,11 +125,13 @@ const Game = {
 
   setConfirmState(ready) {
     const btn = document.getElementById('confirm-button');
-    const txt = btn.querySelector('.confirm-btn-text');
-    const visible = this.requiresConfirmation && !!ready;
+    const txt = btn && btn.querySelector('.confirm-btn-text');
+    const visible = !!btn && this.requiresConfirmation && !!ready;
+    if (!btn) return;
     btn.hidden = !visible;
     if (this.mode && !this.mode.usesPin) {
-      document.getElementById('game-actions').style.display = visible ? '' : 'none';
+      const actions = document.getElementById('game-actions');
+      if (actions) actions.style.display = visible ? '' : 'none';
       requestAnimationFrame(() => {
         if (MapViewer.map) MapViewer.map.invalidateSize(false);
       });
@@ -181,11 +171,6 @@ const Game = {
       `${this.index + 1}/${this.questions.length}`;
     document.getElementById('question-text').textContent = this.promptFor(q);
 
-    if (this.mode.usesPin) {
-      this.setPinLabel('Ține apăsat pentru a plasa');
-      document.getElementById('pin-button').classList.remove('next-mode');
-    }
-
     MapViewer.setInteractive(true);
     this.mode.arm(q, input => this.onSelect(input));
   },
@@ -193,6 +178,7 @@ const Game = {
   promptFor(q) {
     switch (this.dataset.kind) {
       case 'polygon': return `Atinge: ${q.name}`;
+      case 'marine':  return `Atinge: ${q.name}`;
       case 'point':   return `Unde este ${q.name}?`;
       case 'line':    return `Unde curge ${q.name}?`;
       default:        return q.name;
@@ -231,22 +217,20 @@ const Game = {
     const text = document.getElementById('question-text');
     const banner = document.getElementById('question-banner');
     const chosen = this.dataset.items.find(item => item.id === result.chosenId);
+    const session = this.session;
     text.textContent = result.correct ? 'Corect!' : `Ai ales: ${chosen?.name || 'altă unitate'}`;
     banner.classList.toggle('answer-correct', result.correct);
     banner.classList.toggle('answer-incorrect', !result.correct);
 
-    if (this.mode.usesPin) {
-      document.getElementById('pin-button').classList.add('next-mode');
-      this.setPinLabel('Următorul →');
-    }
-
     clearTimeout(this.feedbackTimeout);
     clearTimeout(this.feedbackFadeTimeout);
     this.feedbackFadeTimeout = setTimeout(() => {
+      if (session !== this.session) return;
       if (this.mode && this.mode.fadeFeedback) this.mode.fadeFeedback(950, result, q);
       banner.classList.add('answer-exiting');
     }, 1100);
     this.feedbackTimeout = setTimeout(() => {
+      if (session !== this.session) return;
       banner.classList.remove('answer-correct', 'answer-incorrect', 'answer-exiting');
       this.nextQuestion();
     }, 2050);
@@ -262,8 +246,6 @@ const Game = {
   endGame() {
     this.isPlaying = false;
     this.stopTimer();
-    PinControl.disable();
-
     const total = this.questions.length;
     const correct = this.correctCount;
     const incorrect = this.incorrectCount;
@@ -281,9 +263,7 @@ const Game = {
     this.loadController = null;
     this.isPlaying = false;
     this.stopTimer();
-    clearTimeout(this.feedbackTimeout);
-    clearTimeout(this.feedbackFadeTimeout);
-    PinControl.disable();
+    this.clearFeedback();
     this.teardown();
   },
 
@@ -294,21 +274,25 @@ const Game = {
     }
     this.pendingInput = null;
     MapViewer.cleanup();
-    document.getElementById('game-actions').style.display = '';
-    const pinBtn = document.getElementById('pin-button');
-    if (pinBtn) pinBtn.style.display = '';
+    const actions = document.getElementById('game-actions');
+    if (actions) actions.style.display = '';
     this.setConfirmState(false);
   },
 
   /* ---------- UI helpers ---------- */
+  clearFeedback() {
+    clearTimeout(this.feedbackTimeout);
+    clearTimeout(this.feedbackFadeTimeout);
+    this.feedbackTimeout = null;
+    this.feedbackFadeTimeout = null;
+
+    const banner = document.getElementById('question-banner');
+    if (banner) banner.classList.remove('answer-correct', 'answer-incorrect', 'answer-exiting');
+  },
+
   setBanner(text, number) {
     document.getElementById('question-text').textContent = text;
     document.getElementById('question-number').textContent = number;
-  },
-
-  setPinLabel(text) {
-    const el = document.querySelector('.pin-btn-text');
-    if (el) el.textContent = text;
   },
 
   playSound(type) {

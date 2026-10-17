@@ -168,6 +168,7 @@
   flex-direction: column;
   position: relative;
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
   transition: transform 0.65s cubic-bezier(.22,.8,.25,1), box-shadow 0.45s ease;
 }
 
@@ -176,6 +177,8 @@
   inset: var(--polaroid-padding) var(--polaroid-padding) 48px;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 
 .card-front {
@@ -183,13 +186,14 @@
   display: flex;
   flex-direction: column;
   padding: 52px var(--polaroid-padding) 48px;
+  transform: rotateY(0deg) translateZ(0.1px);
 }
 .card-front .card-image { flex: 1; }
 
 .card-back {
   inset: 0;
   padding: 30px 24px 66px;
-  transform: rotateY(180deg);
+  transform: rotateY(180deg) translateZ(0.1px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -201,6 +205,8 @@
 
 .card.is-flipped { z-index: 45 !important; }
 .card.is-flipped .card-inner { transform: rotateY(180deg); box-shadow: 0 22px 60px rgba(0,0,0,.58); }
+.card.is-flipped .card-front { visibility: hidden; transition: visibility 0s 0.325s; }
+.card:not(.is-flipped) .card-back { visibility: hidden; transition: visibility 0s 0.325s; }
 .card.is-flipped .card-flip-tab span { transform: rotate(180deg); }
 
 .card-flip-tab {

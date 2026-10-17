@@ -13,7 +13,8 @@ const DataLoader = {
   DB_VERSION: 1,
   STORE: 'raw',
   _db: null,
-  CACHE_VERSION: 2,
+  _dbUnavailable: false,
+  CACHE_VERSION: 3,
   FETCH_TIMEOUT: 12000,
   RETRIES: 2,
 
@@ -25,10 +26,17 @@ const DataLoader = {
   },
 
   openDB() {
+    if (this._dbUnavailable) return Promise.resolve(null);
     if (this._db) return Promise.resolve(this._db);
-    return new Promise((resolve, reject) => {
+    return new Promise(resolve => {
       if (!('indexedDB' in window)) return resolve(null);
-      const req = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+      let req;
+      try { req = indexedDB.open(this.DB_NAME, this.DB_VERSION); }
+      catch (err) {
+        this._dbUnavailable = true;
+        console.warn('[DataLoader] IndexedDB indisponibil:', err);
+        return resolve(null);
+      }
       req.onupgradeneeded = () => {
         const db = req.result;
         if (!db.objectStoreNames.contains(this.STORE)) {
@@ -37,6 +45,7 @@ const DataLoader = {
       };
       req.onsuccess = () => { this._db = req.result; resolve(this._db); };
       req.onerror = () => {
+        this._dbUnavailable = true;
         console.warn('[DataLoader] IndexedDB indisponibil:', req.error);
         resolve(null);
       };
@@ -119,10 +128,124 @@ const DataLoader = {
     const raw = await this.loadSource(cfg.source, options);
     const dataset = this.normalize(raw, cfg, gameId);
 
+    /* Râurile sunt un joc despre România: nu afișăm continuarea lor după
+       trecerea frontierei. Granița este datasetul deja normalizat al țărilor,
+       nu o sursă GeoJSON citită separat. */
+    if (gameId === 'romania-rivers') {
+      const countries = await this.loadGameData('europe-countries', options);
+      const romania = countries.items.find(item => item.id === 'romania');
+      if (!romania) throw this.error('DATASET_INVALID', 'Granița României nu este disponibilă');
+      this.clipLinesToGeometry(dataset.items, romania.geometry);
+      dataset.items = dataset.items.filter(item =>
+        item.geometry.coordinates && item.geometry.coordinates.length
+      );
+      dataset.totalItems = dataset.items.length;
+    }
+
     if (!dataset.items.length) throw this.error('DATASET_EMPTY', `Dataset gol: ${gameId}`, { gameId });
 
     this.memCache[gameId] = dataset;
     return dataset;
+  },
+
+  clipLinesToGeometry(items, boundary) {
+    items.forEach(item => {
+      const lines = item.geometry.type === 'LineString'
+        ? [item.geometry.coordinates]
+        : item.geometry.type === 'MultiLineString'
+          ? item.geometry.coordinates
+          : [];
+      const clipped = lines.flatMap(line => this.clipLineToGeometry(line, boundary));
+      if (!clipped.length) {
+        item.geometry = { type: 'MultiLineString', coordinates: [] };
+        return;
+      }
+      item.geometry = clipped.length === 1
+        ? { type: 'LineString', coordinates: clipped[0] }
+        : { type: 'MultiLineString', coordinates: clipped };
+      item.center = this.centerOf(item.geometry);
+    });
+    return items;
+  },
+
+  clipLineToGeometry(line, boundary) {
+    if (!Array.isArray(line) || line.length < 2) return [];
+    const polygons = boundary.type === 'Polygon'
+      ? [boundary.coordinates]
+      : boundary.type === 'MultiPolygon'
+        ? boundary.coordinates
+        : [];
+    const pieces = [];
+
+    for (let i = 0; i < line.length - 1; i++) {
+      const a = line[i], b = line[i + 1];
+      const cuts = [0, 1];
+      for (const polygon of polygons) {
+        for (const ring of polygon) {
+          for (let j = 0; j < ring.length - 1; j++) {
+            const t = this.segmentIntersectionParameter(a, b, ring[j], ring[j + 1]);
+            if (t !== null && t > 1e-9 && t < 1 - 1e-9) cuts.push(t);
+          }
+        }
+      }
+      cuts.sort((x, y) => x - y);
+      for (let j = 0; j < cuts.length - 1; j++) {
+        const t1 = cuts[j], t2 = cuts[j + 1];
+        const middle = this.interpolate(a, b, (t1 + t2) / 2);
+        if (!this.pointInGeometry(middle, boundary)) continue;
+        const start = this.interpolate(a, b, t1);
+        const end = this.interpolate(a, b, t2);
+        const previous = pieces[pieces.length - 1];
+        if (previous && this.samePoint(previous[previous.length - 1], start)) {
+          previous.push(end);
+        } else {
+          pieces.push([start, end]);
+        }
+      }
+    }
+    return pieces.filter(piece => piece.length > 1);
+  },
+
+  segmentIntersectionParameter(a, b, c, d) {
+    const rx = b[0] - a[0], ry = b[1] - a[1];
+    const sx = d[0] - c[0], sy = d[1] - c[1];
+    const denominator = rx * sy - ry * sx;
+    if (Math.abs(denominator) < 1e-12) return null;
+    const qx = c[0] - a[0], qy = c[1] - a[1];
+    const t = (qx * sy - qy * sx) / denominator;
+    const u = (qx * ry - qy * rx) / denominator;
+    return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? t : null;
+  },
+
+  interpolate(a, b, t) {
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  },
+
+  samePoint(a, b) {
+    return Math.abs(a[0] - b[0]) < 1e-10 && Math.abs(a[1] - b[1]) < 1e-10;
+  },
+
+  pointInGeometry(point, geometry) {
+    const polygons = geometry.type === 'Polygon'
+      ? [geometry.coordinates]
+      : geometry.type === 'MultiPolygon'
+        ? geometry.coordinates
+        : [];
+    return polygons.some(polygon => this.pointInRing(point, polygon[0]) &&
+      !polygon.slice(1).some(hole => this.pointInRing(point, hole)));
+  },
+
+  pointInRing(point, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const xi = ring[i][0], yi = ring[i][1];
+      const xj = ring[j][0], yj = ring[j][1];
+      const crosses = (yi > point[1]) !== (yj > point[1]);
+      if (crosses && point[0] < (xj - xi) * (point[1] - yi) / (yj - yi) + xi) {
+        inside = !inside;
+      }
+    }
+    return inside;
   },
 
   isFeatureCollection(value) {
@@ -214,13 +337,30 @@ const DataLoader = {
 
       /* 4. filtrare si pe numele corectat */
       if (excludeSet.has(name)) continue;
+      if (cfg.wikidataByName?.[rawName] && props.wikidata !== cfg.wikidataByName[rawName]) continue;
 
       items.push({
-        id: this.slug(name),
+        /* ID-ul exportului rămâne stabil când corectăm numai numele afișat. */
+        id: this.slug(gameId === 'world-countries' ? rawName : name),
         name,
         geometry: geom,
         center: this.centerOf(geom)
       });
+      if (cfg.kind === 'marine') {
+        const item = items[items.length - 1];
+        item.id = String(props.id || item.id);
+        item.marineType = (cfg.pointNames || []).includes(rawName) ? 'strait' : 'area';
+        if (item.marineType === 'strait') item.center = cfg.pointCenters[rawName];
+      }
+    }
+
+    /* Vatican has null geometry in the Overpass export. Use the country's
+       published boundary extent so it remains a playable question. */
+    if (cfg.kind === 'polygon' && (gameId === 'world-countries' || gameId === 'europe-countries') &&
+        !items.some(item => item.id === 'vatican')) {
+      const [w, s, e, n] = [12.446664, 41.901164, 12.457562, 41.906825];
+      items.push({ id: 'vatican', name: 'Vatican', center: [(s + n) / 2, (w + e) / 2],
+        geometry: { type: 'Polygon', coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] } });
     }
 
     /* 5. uneste teritorii asociate cu statul lor suveran */
@@ -243,8 +383,8 @@ const DataLoader = {
       view: cfg.view,
       totalItems: merged.length,
       items: merged,
-      source: 'OpenStreetMap / Overpass',
-      license: 'ODbL 1.0'
+      source: cfg.kind === 'marine' ? 'Marine Regions / SeaVoX v19' : 'OpenStreetMap / Overpass',
+      license: cfg.kind === 'marine' ? 'Marine Regions (verifică licența setului)' : 'ODbL 1.0'
     };
   },
 

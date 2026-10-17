@@ -25,6 +25,7 @@ try:
     import numpy as np
     from PIL import Image
     from scipy.ndimage import gaussian_filter
+    from shapely import set_precision
     from shapely.geometry import shape, mapping
     from shapely.ops import unary_union
     import rasterio.features
@@ -177,7 +178,7 @@ def build_geojson(elev, bounds, clip=None):
         (east - west) / w, (south - north) / h
     )
 
-    features = []
+    band_geometries = []
     for band_id in range(len(BREAKS) + 1):
         mask = (bands == band_id).astype(np.uint8)
         if not mask.any():
@@ -207,6 +208,28 @@ def build_geojson(elev, bounds, clip=None):
             continue
         geom = unary_union(parts)
 
+        band_geometries.append((band_id, geom))
+
+    # Simplificarea și eliminarea petelor minuscule pot lăsa între benzi
+    # triunghiuri fără nicio clasă hipsometrică. Atribuie fiecare gol benzii
+    # cu care împarte cea mai mare porțiune de contur. Diferența este calculată
+    # strict în interiorul măștii de uscat, deci marea nu este completată.
+    if clip is not None and band_geometries:
+        geoms = [geom for _, geom in band_geometries]
+        geoms = fill_uncovered_areas(geoms, clip)
+        # Fixează toate contururile pe aceeași grilă înainte de ultima
+        # completare. Rotunjirea separată a coordonatelor poate redeschide
+        # goluri foarte mici între două poligoane care înainte se atingeau.
+        grid_size = 10 ** -COORD_DECIMALS
+        precise_clip = set_precision(clip, grid_size).buffer(0)
+        geoms = [set_precision(geom, grid_size).buffer(0) for geom in geoms]
+        geoms = fill_uncovered_areas(geoms, precise_clip)
+        band_geometries = [
+            (band_geometries[i][0], geom) for i, geom in enumerate(geoms)
+        ]
+
+    features = []
+    for band_id, geom in band_geometries:
         features.append({
             "type": "Feature",
             "properties": {"band": band_id},
@@ -214,6 +237,49 @@ def build_geojson(elev, bounds, clip=None):
         })
 
     return {"type": "FeatureCollection", "features": features}
+
+
+def fill_uncovered_areas(band_geometries, clip):
+    """Completează golurile dintre benzi prin interpolare topologică.
+
+    Fiecare componentă din masca de uscat care nu aparține niciunei benzi este
+    atribuită vecinului cu cea mai lungă frontieră comună. Este mai stabil
+    decât alegerea după centroid pentru golurile înguste sau triunghiulare.
+    """
+    band_geometries = [geom.buffer(0) for geom in band_geometries]
+    covered = unary_union(band_geometries).buffer(0)
+    gaps = clip.difference(covered).buffer(0)
+    if gaps.is_empty:
+        return band_geometries
+
+    gap_parts = list(gaps.geoms) if gaps.geom_type.startswith("Multi") else [gaps]
+    assignments = [[] for _ in band_geometries]
+
+    for gap in gap_parts:
+        shared = [gap.boundary.intersection(geom.boundary).length
+                  for geom in band_geometries]
+        if max(shared, default=0) > 0:
+            band_index = max(range(len(shared)), key=shared.__getitem__)
+        else:
+            # Fallback pentru eventuale erori numerice care separă contururile.
+            distances = [gap.distance(geom) for geom in band_geometries]
+            band_index = min(range(len(distances)), key=distances.__getitem__)
+        assignments[band_index].append(gap)
+
+    filled_area = 0.0
+    filled_parts = 0
+    for index, additions in enumerate(assignments):
+        if not additions:
+            continue
+        filled_area += sum(part.area for part in additions)
+        filled_parts += len(additions)
+        band_geometries[index] = unary_union(
+            [band_geometries[index], *additions]
+        ).buffer(0)
+
+    print("  completare goluri: %d fragmente, %.6f grade^2" %
+          (filled_parts, filled_area))
+    return band_geometries
 
 
 def round_coords(obj):

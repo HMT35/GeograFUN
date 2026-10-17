@@ -9,6 +9,7 @@ GameModes.register('line', {
   dataset: null,
   layerGroup: null,
   layers: {},
+  pins: {},
   onSelect: null,
   armed: false,
   usesPin: false,
@@ -29,6 +30,7 @@ GameModes.register('line', {
     this.map = map;
     this.dataset = dataset;
     this.layers = {};
+    this.pins = {};
     this.selectedId = null;
     this.hoverId = null;
     this.layerGroup = L.layerGroup().addTo(map);
@@ -56,6 +58,28 @@ GameModes.register('line', {
 
       layer.addTo(this.layerGroup);
       this.layers[item.id] = layer;
+
+      /* Ținta punctuală este mult mai ușor de atins pe ecrane tactile decât
+         o linie subțire. Centrul este calculat de DataLoader după geometria
+         tăiată la granița României. */
+      const pin = L.circleMarker([item.center[0], item.center[1]], {
+        radius: 11,
+        color: '#9ed8ff',
+        weight: 2,
+        opacity: 0.9,
+        fillColor: '#3182ce',
+        fillOpacity: 0.7,
+        bubblingMouseEvents: false,
+        interactive: true
+      });
+      pin.on('click', e => {
+        if (e.originalEvent) L.DomEvent.stop(e.originalEvent);
+        this._pick(item.id);
+      });
+      pin.on('mouseover', () => this._hoverOn(item.id));
+      pin.on('mouseout', () => this._hoverOff(item.id));
+      pin.addTo(this.layerGroup);
+      this.pins[item.id] = pin;
     });
   },
 
@@ -111,6 +135,10 @@ GameModes.register('line', {
     this.hoverId = null;
     if (this.selectedId && this.layers[this.selectedId]) {
       this.layers[this.selectedId].setStyle(this.style.base);
+      this.pins[this.selectedId]?.setStyle({
+        color: '#9ed8ff', fillColor: '#3182ce', weight: 2,
+        opacity: 0.9, fillOpacity: 0.7
+      });
     }
     this.selectedId = id;
     this._setStyle(id, this.style.selected);
@@ -156,6 +184,15 @@ GameModes.register('line', {
       layer.setStyle(style);
       if (layer.bringToFront) layer.bringToFront();
     }
+    const pin = this.pins[id];
+    if (pin) pin.setStyle({
+      color: style.color,
+      fillColor: style.color,
+      weight: style.weight >= 5 ? 3 : 2,
+      opacity: style.opacity,
+      fillOpacity: style.opacity >= 1 ? 0.9 : 0.7
+    });
+    if (pin && pin.bringToFront) pin.bringToFront();
   },
 
   resetStyles() {
@@ -165,6 +202,10 @@ GameModes.register('line', {
       l.setStyle(this.style.base);
       if (l.getTooltip && l.getTooltip()) l.unbindTooltip();
     });
+    Object.values(this.pins).forEach(pin => pin.setStyle({
+      color: '#9ed8ff', fillColor: '#3182ce', weight: 2,
+      opacity: 0.9, fillOpacity: 0.7
+    }));
   },
 
   cleanup() {
@@ -176,6 +217,7 @@ GameModes.register('line', {
     if (this.layerGroup && this.map) this.map.removeLayer(this.layerGroup);
     this.layerGroup = null;
     this.layers = {};
+    this.pins = {};
     this.dataset = null;
     this.map = null;
   }

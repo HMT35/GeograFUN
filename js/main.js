@@ -27,10 +27,8 @@ const App = {
       });
     });
 
-    /* Descarca sursele in fundal pentru offline */
-    DataLoader.prefetchAll((done, total) => {
-      console.log(`Date preîncărcate: ${done}/${total}`);
-    });
+    /* Nu preîncărcăm alte jocuri sau hărți legacy. Datele metadata pentru
+       jocul ales sunt încărcate la pornirea acelui joc. */
   },
 
   setupEventListeners() {
@@ -53,8 +51,17 @@ const App = {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').then(
-      () => console.log('ServiceWorker înregistrat'),
-      err => console.log('ServiceWorker eșuat:', err)
+      registration => {
+        console.log('ServiceWorker înregistrat');
+        const precache = () => (navigator.serviceWorker.controller || registration.active)?.postMessage('precache-geometry');
+        precache();
+        navigator.serviceWorker.addEventListener('controllerchange', precache);
+        registration.update().catch(() => {});
+      },
+      err => {
+        if (err.name !== 'NotSupportedError' && err.name !== 'SecurityError')
+          console.warn('ServiceWorker eșuat:', err);
+      }
     );
   });
 }

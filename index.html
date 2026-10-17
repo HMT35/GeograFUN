@@ -5,10 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#1a1a2e" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="assets/icons/icon-192.svg" type="image/svg+xml" />
   <title>GeograFUN</title>
+  <script>
+    /* Aplică alegerea salvată înainte de primul frame, fără flash light/dark. */
+    try {
+      const savedTheme = localStorage.getItem('geografun-theme');
+      if (savedTheme === 'dark' || savedTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      }
+    } catch (_) {}
+  </script>
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -87,14 +97,6 @@
 
     <div id="map-container" class="map-container">
       <div id="map" class="map"></div>
-      <!-- Pin drop zone overlay -->
-      <div class="pin-drop-zone" id="pin-zone">
-        <div class="pin-marker" id="pin-marker">
-          <div class="pin-head">📌</div>
-          <div class="pin-connector"></div>
-          <div class="pin-base"></div>
-        </div>
-      </div>
       <!-- Question overlay -->
       <div class="question-banner" id="question-banner">
         <span class="question-number" id="question-number">1/10</span>
@@ -104,11 +106,11 @@
       </div>
     </div>
 
+    <footer id="country-credit" class="country-credit" hidden>
+      Multumim geoBoundaries pentru datele furnizate:
+      <a href="https://www.geoboundaries.org/www.geoboundaries.org" target="_blank" rel="noopener noreferrer">https://www.geoboundaries.org/www.geoboundaries.org</a>
+    </footer>
     <div class="game-actions" id="game-actions">
-      <button class="pin-button" id="pin-button" aria-label="Plasează pin">
-        <span class="pin-btn-icon">📌</span>
-        <span class="pin-btn-text">Ține apăsat pentru a plasa</span>
-      </button>
       <button class="confirm-button" id="confirm-button" type="button" hidden disabled aria-label="Confirmă răspunsul">
         <span class="confirm-btn-icon">✓</span>
         <span class="confirm-btn-text">Confirmă</span>
@@ -165,13 +167,14 @@
   <script src="js/theme.js"></script>
   <script src="js/datasets.config.js"></script>
   <script src="js/data-loader.js"></script>
+  <script src="js/geojson-tiles.js"></script>
   <script src="js/welcome.js"></script>
   <script src="js/menu.js"></script>
   <script src="js/map.js"></script>
-  <script src="js/pin.js"></script>
   <script src="js/modes/registry.js"></script>
   <script src="js/modes/polygon-mode.js"></script>
   <script src="js/modes/point-mode.js"></script>
+  <script src="js/modes/marine-mode.js"></script>
   <script src="js/modes/line-mode.js"></script>
   <script src="js/game.js"></script>
   <script src="js/scoring.js"></script>

@@ -1,0 +1,96 @@
+{
+  "iso3": 195,
+  "wikidata": 0,
+  "name": 0,
+  "unmatched": [
+    {
+      "iso3": "ATA",
+      "name": "Antarctica"
+    },
+    {
+      "iso3": "VAT",
+      "name": "Vatican City"
+    },
+    {
+      "iso3": "111",
+      "name": "Abyei"
+    },
+    {
+      "iso3": "112",
+      "name": "Aksai Chin"
+    },
+    {
+      "iso3": "113",
+      "name": "CH-IN"
+    },
+    {
+      "iso3": "114",
+      "name": "Demchok"
+    },
+    {
+      "iso3": "115",
+      "name": "Dragonja"
+    },
+    {
+      "iso3": "116",
+      "name": "Dramana-Shakatoe"
+    },
+    {
+      "iso3": "117",
+      "name": "Falkland Islands (UK)"
+    },
+    {
+      "iso3": "118",
+      "name": "Gaza Strip"
+    },
+    {
+      "iso3": "119",
+      "name": "Kalapani"
+    },
+    {
+      "iso3": "120",
+      "name": "Isla Brasilera"
+    },
+    {
+      "iso3": "121",
+      "name": "Siachen-Saltoro"
+    },
+    {
+      "iso3": "122",
+      "name": "Koualou"
+    },
+    {
+      "iso3": "123",
+      "name": "Liancourt Rocks"
+    },
+    {
+      "iso3": "124",
+      "name": "No Man's Land"
+    },
+    {
+      "iso3": "125",
+      "name": "Paracel Is"
+    },
+    {
+      "iso3": "126",
+      "name": "Sanafir & Tiran Is."
+    },
+    {
+      "iso3": "127",
+      "name": "Senkakus"
+    },
+    {
+      "iso3": "128",
+      "name": "Spratly Is"
+    },
+    {
+      "iso3": "129",
+      "name": "West Bank"
+    },
+    {
+      "iso3": "ESH",
+      "name": "Western Sahara"
+    }
+  ],
+  "total": 217
+}

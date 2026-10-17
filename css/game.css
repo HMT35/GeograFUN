@@ -60,53 +60,17 @@
   z-index: 1;
 }
 
-/* Pin drop zone */
-.pin-drop-zone {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 10;
-  pointer-events: none;
+.country-credit {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  font-size: 10px;
+  text-align: center;
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
+  background: var(--header-bg);
 }
-
-.pin-marker {
-  position: fixed;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s;
-  z-index: 15;
-}
-
-.pin-marker.active {
-  opacity: 1;
-}
-
-.pin-head {
-  font-size: 2rem;
-  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
-  transform: translateY(-50%);
-}
-
-.pin-connector {
-  width: 2px;
-  height: 20px;
-  background: linear-gradient(180deg, #ff4444, rgba(255,68,68,0.3));
-  margin-top: -4px;
-}
-
-.pin-base {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #ff4444;
-  box-shadow: 0 0 12px rgba(255,68,68,0.6);
-  margin-top: -1px;
-}
+.country-credit[hidden] { display: none; }
+.country-credit a { color: inherit; }
 
 /* Question banner */
 .question-banner {
@@ -164,7 +128,7 @@
   100% { opacity: 0; transform: translateX(-50%) scale(.94); }
 }
 
-/* Game actions (only shown when a pin/confirmation action is needed) */
+/* Confirmarea apare doar pe dispozitive touch după selecție. */
 .game-actions {
   display: flex;
   flex-direction: column;
@@ -192,40 +156,6 @@
 }
 
 .game-actions[style*="display: none"] { display: none !important; }
-
-.pin-button {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 14px;
-  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-  border-radius: 14px;
-  font-size: 1rem;
-  font-weight: 500;
-  transition: opacity 0.2s, transform 0.2s;
-  box-shadow: 0 4px 16px rgba(79, 172, 254, 0.3);
-}
-
-.pin-button:active {
-  opacity: 0.8;
-  transform: scale(0.98);
-}
-
-.pin-button.next-mode {
-  background: linear-gradient(135deg, var(--accent-green), #38d9a9);
-  box-shadow: 0 4px 16px rgba(67, 233, 123, 0.3);
-}
-
-.pin-btn-icon {
-  font-size: 1.2rem;
-}
-
-.pin-btn-text {
-  flex: 1;
-  text-align: center;
-}
 
 /* Buton de confirmare (toate modurile) */
 .confirm-button {
@@ -282,6 +212,26 @@
 /* Leaflet overrides */
 .leaflet-container {
   background: var(--map-bg) !important;
+}
+
+/* Jocurile României: exteriorul hărții păstrează verdele deschis,
+   iar geometria României este randată separat, cu umplere albă. */
+.leaflet-container.romania-palette {
+  background: #c5e8bd !important;
+}
+
+/* Avoid one-pixel antialiasing gaps between adjacent streamed SVG shapes on
+   fractional mobile transforms. The rounded join closes the seam without
+   changing geometry or hitboxes. */
+.leaflet-pane > svg path {
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  shape-rendering: geometricPrecision;
+}
+
+.leaflet-gfTiles-pane,
+.leaflet-gfDetail-pane {
+  transform: translateZ(0);
 }
 
 .leaflet-control-zoom {

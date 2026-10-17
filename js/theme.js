@@ -31,7 +31,12 @@ const Theme = {
   },
 
   saved() {
-    try { return localStorage.getItem(this.KEY); } catch (_) { return null; }
+    try {
+      const value = localStorage.getItem(this.KEY);
+      return value === 'dark' || value === 'light' ? value : null;
+    } catch (_) {
+      return null;
+    }
   },
 
   current() {
@@ -43,6 +48,7 @@ const Theme = {
   },
 
   apply(theme, persist) {
+    theme = theme === 'light' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', theme);
 
     const meta = document.querySelector('meta[name="theme-color"]');

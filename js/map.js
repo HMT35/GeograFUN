@@ -5,109 +5,131 @@
 /* ============================================================ */
 const MapViewer = {
   map: null,
-  tileLayer: null,
   currentGameId: null,
   isInitialized: false,
 
-  /* ZERO tile-uri raster: orice serviciu extern vine cu toponime sau
-     granite. Fundalul e desenat local din uscatul mondial (GeoJSON),
-     deci harta nu poate afisa niciun nume, in nicio limba. */
-  landLayer: null,
-  reliefLayer: null,
-  bordersLayer: null,
+  /* Harta folosește geometrii complete per țară. */
+  tileLayer: null,
+  marineLayer: null,
+  rasterLayer: null,
+  detailLayer: null,
+  _rendererFrame: null,
+
+  /* Leaflet 1.9 updates SVG/Canvas clip bounds and viewBox only on moveend.
+     While dragging, freshly streamed polygons would otherwise remain clipped
+     outside the old viewport even though their layers have already loaded. */
+  _refreshRenderers() {
+    const map = this.map;
+    if (!map || map._animatingZoom || map._gfZooming || map.touchZoom?._zooming) return;
+    const renderers = new Set([map._renderer, ...Object.values(map._paneRenderers || {})]);
+    for (const renderer of renderers) {
+      if (renderer && renderer._container) renderer._update();
+    }
+  },
+
+  _scheduleRendererRefresh() {
+    if (this._rendererFrame !== null) return;
+    const map = this.map;
+    this._rendererFrame = requestAnimationFrame(() => {
+      this._rendererFrame = null;
+      if (map === this.map) this._refreshRenderers();
+    });
+  },
+
+  _stopRendererRefresh() {
+    if (this._rendererFrame !== null) cancelAnimationFrame(this._rendererFrame);
+    this._rendererFrame = null;
+    if (this.map) this.map.off('move', this._scheduleRendererRefresh, this);
+    if (this.map) this.map.off('zoomstart', this._zoomStart, this);
+    if (this.map) this.map.off('zoomend', this._zoomEnd, this);
+  },
+  _zoomStart() { if (this.map) this.map._gfZooming = true; },
+  _zoomEnd() { if (this.map) this.map._gfZooming = false; },
 
   colors() {
+    if (this.currentGameId === 'romania-rivers' || this.currentGameId === 'romania-capitals' ||
+        this.currentGameId === 'romania-counties') {
+      /* Jocurile României folosesc aceeași compoziție vizuală:
+         exteriorul este verdele folosit anterior pentru România, iar
+         suprafața României rămâne albă pentru contrast. */
+      return { sea: '#c5e8bd', land: '#ffffff', landStroke: '#6f9f68' };
+    }
+    if (this.currentGameId === 'europe-countries' || this.currentGameId === 'europe-capitals' ||
+        this.currentGameId === 'world-countries') {
+      return { sea: '#eef1f8', land: '#f7f7f7', landStroke: '#000000' };
+    }
     const light = document.documentElement.getAttribute('data-theme') === 'light';
     return light
       /* border* = exact stilul "base" al poligoanelor din jocul cu tari
          (js/modes/polygon-mode.js), ca fundalul sa arate identic */
-      ? { sea: '#0f2f5c', land: '#ffffff', landStroke: '#ffffff',
-          border: '#9aa6c4', borderFill: '#ffffff', borderWeight: 0.8, borderFillOpacity: 1 }
-      : { sea: '#0a1224', land: '#20263c', landStroke: '#20263c',
-          border: '#7f8dbd', borderFill: '#2f3a5f', borderWeight: 1, borderFillOpacity: 0.9 };
+      ? { sea: '#0f2f5c', land: '#ffffff', landStroke: '#9aaac4' }
+      : { sea: '#0a1224', land: '#20263c', landStroke: '#7281a5' };
   },
-
-  /* Paleta hipsometrica: banda 0 = campie ... banda 4 = munte inalt.
-     Indicii corespund pragurilor din generate-relief.py (200/500/800/1500 m). */
-  reliefPalette() {
-    const light = document.documentElement.getAttribute('data-theme') === 'light';
-    return light
-      ? ['#c8e6a0', '#e9edA0', '#e8d59a', '#c9a26b', '#8b6b4a']
-      /* dark: albastru-gri rece -> sepia cald, desaturat si cu luminozitate
-         joasa, ca liniile albastre ale raurilor sa iasa clar deasupra */
-      : ['#22303f', '#2b3a42', '#3a4240', '#4d483f', '#5f5244'];
-  },
-
-  reliefStyle(feature) {
-    const palette = this.reliefPalette();
-    const band = feature && feature.properties ? feature.properties.band : 0;
-    return {
-      fillColor: palette[Math.min(band, palette.length - 1)] || palette[0],
-      color: 'transparent',
-      weight: 0,
-      fillOpacity: 1,
-      opacity: 1
-    };
-  },
-
 
   /* Reaplica paleta cand se schimba tema */
   refreshTheme() {
     const c = this.colors();
     const el = document.getElementById('map');
     if (el) el.style.background = c.sea;
-    if (this.landLayer) {
-      this.landLayer.setStyle({
-        fillColor: c.land, color: c.landStroke, weight: 0.6, fillOpacity: 1, opacity: 1
-      });
-    }
-    if (this.reliefLayer) {
-      this.reliefLayer.eachLayer(l => l.setStyle(this.reliefStyle(l.feature)));
-    }
-    if (this.bordersLayer) {
-      this.bordersLayer.setStyle({
-        fillColor: c.borderFill, fillOpacity: c.borderFillOpacity,
-        color: c.border, weight: c.borderWeight, opacity: 1
-      });
-    }
+    if (this.tileLayer) this.tileLayer.refreshTheme();
+    if (this.marineLayer) this.marineLayer.refreshTheme();
+    if (this.rasterLayer) this.rasterLayer.refreshTheme();
   },
 
   async loadMap(gameId, dataset) {
     this.currentGameId = gameId;
+    this._backgroundDataset = dataset;
 
     if (this.map) {
+      this._stopRendererRefresh();
       this.map.remove();
       this.map = null;
     }
+    this.tileLayer = null;
+    this.marineLayer = null;
+    this.rasterLayer = null;
+    this.detailLayer = null;
 
     const view = (dataset && dataset.view) || { center: [45.9, 25.0], zoom: 6 };
 
     this.map = L.map('map', {
       center: view.center,
       zoom: view.zoom,
+      zoomSnap: 0,
+      zoomDelta: 0.25,
       zoomControl: false,
-      attributionControl: false,
+      attributionControl: true,
       dragging: true,
       touchZoom: true,
       scrollWheelZoom: true,
       minZoom: Number.isFinite(view.minZoom) ? view.minZoom : 3,
       maxZoom: 12
     });
+    this.map.getContainer().classList.toggle('romania-palette',
+      gameId === 'romania-rivers' || gameId === 'romania-capitals' || gameId === 'romania-counties');
+    // Keep Leaflet's SVG clip bounds aligned with the moving map. This is
+    // needed for streamed country geometry as well as the marine overlay;
+    // the frame guard in _scheduleRendererRefresh prevents duplicate work.
+    this.map.on('move', this._scheduleRendererRefresh, this);
+    this.map.on('zoomstart', this._zoomStart, this);
+    this.map.on('zoomend', this._zoomEnd, this);
 
-    /* Panouri proprii: uscat (200) < relief (250) < granite (350) < overlay jocului (400) */
-    this.map.createPane('gfLand');
-    this.map.getPane('gfLand').style.zIndex = 200;
-    this.map.createPane('gfRelief');
-    this.map.getPane('gfRelief').style.zIndex = 250;
-    this.map.createPane('gfBorders');
-    this.map.getPane('gfBorders').style.zIndex = 350;
-    this.map.getPane('gfBorders').style.pointerEvents = 'none';
+    /* Singurele straturi ale hărții sunt tile-urile enriched. */
+    this.map.createPane('gfTiles');
+    this.map.getPane('gfTiles').style.zIndex = 200;
+    this.map.createPane('gfSimple');
+    this.map.getPane('gfSimple').style.zIndex = 215;
+    this.map.getPane('gfSimple').style.pointerEvents = 'none';
+    this.map.createPane('gfDetail');
+    this.map.getPane('gfDetail').style.zIndex = 225;
+    this.map.getPane('gfDetail').style.pointerEvents = 'none';
+    this.map.createPane('gfMarine');
+    this.map.getPane('gfMarine').style.zIndex = 300;
+    this.map.createPane('gfMarineRaster');
+    this.map.getPane('gfMarineRaster').style.zIndex = 275;
+    this.map.getPane('gfMarineRaster').style.pointerEvents = 'none';
 
-    /* Fundal desenat local: marea = culoarea containerului, uscatul = poligoane */
-    await this.addLandBackground();
-    /* relieful se incarca doar pentru seturile care il cer (ex. Romania) */
-    if (dataset && dataset.relief) await this.addReliefBackground();
-    if (dataset && dataset.borders) await this.addBordersBackground(dataset.borders);
+    await this.addTiledBackground();
     this.refreshTheme();
 
     this.isInitialized = true;
@@ -119,78 +141,78 @@ const MapViewer = {
     return this.map;
   },
 
-  /* Uscatul mondial ca strat de fundal (fara nume, fara granite) */
-  async addLandBackground() {
-    if (!this.map) return;
+  async addTiledBackground() {
+    const map = this.map;
     try {
-      if (!MapViewer._landGeo) {
-        const res = await fetch('assets/data/base/land.geojson');
-        if (!res.ok) throw new Error('land.geojson lipseste');
-        MapViewer._landGeo = await res.json();
+      if (this.currentGameId === 'romania-counties' || this.currentGameId === 'romania-capitals') {
+        const counties = this.currentGameId === 'romania-counties'
+          ? this._backgroundDataset
+          : await DataLoader.loadGameData('romania-counties');
+        if (map !== this.map) return;
+        this.tileLayer = GeoJSONTiles.countyLayer(counties).addTo(map);
+        return;
       }
-      const c = this.colors();
-      this.landLayer = L.geoJSON(MapViewer._landGeo, {
-        interactive: false,
-        pane: 'gfLand',
-        style: { fillColor: c.land, color: c.landStroke, weight: 0.6, fillOpacity: 1, opacity: 1 }
-      }).addTo(this.map);
-      if (this.landLayer.bringToBack) this.landLayer.bringToBack();
-    } catch (err) {
-      /* fara fundal: raman doar poligoanele jocului pe fond de mare */
-      console.warn('[MapViewer] fundal uscat indisponibil:', err.message);
-    }
-  },
-
-  /* Benzi hipsometrice (campie / dealuri / podis / munte) peste uscat */
-  async addReliefBackground() {
-    if (!this.map) return;
-    try {
-      if (!MapViewer._reliefGeo) {
-        const res = await fetch('assets/data/base/relief_ro.geojson');
-        if (!res.ok) throw new Error('relief_ro.geojson lipseste');
-        MapViewer._reliefGeo = await res.json();
-      }
-      this.reliefLayer = L.geoJSON(MapViewer._reliefGeo, {
-        interactive: false,
-        pane: 'gfRelief',
-        style: f => this.reliefStyle(f)
-      }).addTo(this.map);
-      /* sub straturile jocului, dar peste uscatul alb */
-      if (this.reliefLayer.bringToBack) this.reliefLayer.bringToBack();
-      if (this.landLayer && this.landLayer.bringToBack) this.landLayer.bringToBack();
-    } catch (err) {
-      console.warn('[MapViewer] relief indisponibil:', err.message);
-    }
-  },
-
-  /* Granitele tarilor: exact acelasi set (filtrat, normalizat) folosit de
-     jocul cu tari, ca fundalul sa fie identic vizual. `borderSource` e
-     id-ul unui dataset (ex. 'europe-countries'). */
-  async addBordersBackground(borderSource) {
-    if (!this.map) return;
-    const gameId = typeof borderSource === 'string' ? borderSource : 'europe-countries';
-    try {
-      if (!MapViewer._bordersGeo) MapViewer._bordersGeo = {};
-      if (!MapViewer._bordersGeo[gameId]) {
-        const src = await DataLoader.loadGameData(gameId);
-        MapViewer._bordersGeo[gameId] = {
-          type: 'FeatureCollection',
-          features: src.items
-            .filter(it => it.geometry)
-            .map(it => ({ type: 'Feature', properties: { id: it.id }, geometry: it.geometry }))
-        };
-      }
-      const c = this.colors();
-      this.bordersLayer = L.geoJSON(MapViewer._bordersGeo[gameId], {
-        interactive: false,
-        pane: 'gfBorders',
-        style: {
-          fillColor: c.borderFill, fillOpacity: c.borderFillOpacity,
-          color: c.border, weight: c.borderWeight, opacity: 1
+      const countries = await GeoJSONTiles.manifest('assets/data/countries-enriched/manifest.json');
+      if (map !== this.map) return;
+      let gameIds = null;
+      if (this.currentGameId === 'europe-countries' || this.currentGameId === 'europe-capitals' ||
+          this.currentGameId === 'europe-marine') {
+        /* Capitalele folosesc aceleași granițe ca jocul cu țări. */
+        const borders = this.currentGameId === 'europe-countries'
+          ? this._backgroundDataset : await DataLoader.loadGameData('europe-countries');
+        if (map !== this.map) return;
+        const ids = new Set(borders.items.map(item => item.id));
+        const aliases = { NLD: 'olanda', GBR: 'regatul-unit', VAT: 'vatican' };
+        gameIds = new Map();
+        for (const country of countries.countries) {
+          const id = aliases[country.iso3] || country.gameId;
+          if (ids.has(id)) gameIds.set(country.iso3, id);
         }
-      }).addTo(this.map);
+      }
+      /* România folosește exclusiv geometria SIMPLE; geometria FAST nu este
+         cerută/încărcată pentru ea. Vecinii europeni folosesc doar FAST. */
+      const europe = new Set(('ALB AND AUT BEL BGR BIH BLR CHE CYP CZE DEU DNK ESP EST FIN FRA GBR GRC HRV HUN IRL ISL ITA LIE LTU LUX LVA MCO MDA MKD MLT MNE NLD NOR POL PRT ROU RUS SMR SRB SVK SVN SWE TUR UKR VAT').split(' '));
+      const rivers = this.currentGameId === 'romania-rivers';
+      const tileOptions = this.currentGameId === 'europe-marine'
+        ? {
+            include: europe,
+            maxTier: 'simple-fast',
+            // Playable European countries get their readable simple geometry;
+            // every other country remains a cheap fast background.
+            tierFor: (_country, playable) => playable ? 'simple' : 'fast',
+            onChunkAdded: () => this._scheduleRendererRefresh()
+          }
+        : rivers ? {
+            /* Râurile României au nevoie de un singur fundal: România.
+               Nu solicita geometria niciunei alte țări. */
+            include: new Set(['ROU']),
+            tierFor: () => 'simple',
+            maxTier: 'simple',
+          } : {};
+      tileOptions.onRasterFailure = failedLayer => {
+        if (this.map !== map || this.tileLayer !== failedLayer) return;
+        const replacement = GeoJSONTiles.layer(countries, gameIds, tileOptions).addTo(map);
+        this.tileLayer = replacement;
+        if (this.currentGameId === 'europe-countries' || this.currentGameId === 'world-countries') {
+          GameModes.get('polygon').useVectorHitboxes();
+        }
+        map.removeLayer(failedLayer);
+      };
+      /* Tot fundalul este raster în worker; numai feedback-ul rămâne SVG.
+         Fallback vectorial pe browsere fără OffscreenCanvas. */
+      if (!rivers && typeof GeoJSONTiles.rasterSupported === 'function' && await GeoJSONTiles.rasterSupported()) {
+        if (map !== this.map) return;
+        this.tileLayer = GeoJSONTiles.backgroundLayer(countries, gameIds, tileOptions);
+        this.tileLayer.addTo(map);
+      } else {
+        this.tileLayer = GeoJSONTiles.layer(countries, gameIds, tileOptions).addTo(map);
+      }
+      map.attributionControl.addAttribution('Boundaries: geoBoundaries CGAZ (CC BY 4.0)');
+      if (this.currentGameId === 'europe-marine') {
+        map.attributionControl.addAttribution('Marine areas: VLIZ / Marine Regions, SeaVoX v19');
+      }
     } catch (err) {
-      console.warn('[MapViewer] granite indisponibile:', err.message);
+      console.warn('[MapViewer] tile-urile indisponibile; nu se afișează o hartă legacy:', err);
     }
   },
 
@@ -248,15 +270,17 @@ const MapViewer = {
 
   cleanup() {
     if (this.map) {
+      this._stopRendererRefresh();
       this.map.remove();
       this.map = null;
     }
-    this.landLayer = null;
-    this.reliefLayer = null;
-    this.bordersLayer = null;
     this.tileLayer = null;
+    this.marineLayer = null;
+    this.rasterLayer = null;
+    this.detailLayer = null;
     this.isInitialized = false;
     this.currentGameId = null;
+    this._backgroundDataset = null;
   }
 };
 
