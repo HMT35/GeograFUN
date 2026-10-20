@@ -44,7 +44,7 @@ const Game = {
     const cfg = DatasetsConfig.get(gameId);
     if (!cfg) {
       alert('Acest joc nu are încă un set de date.');
-      return;
+      return false;
     }
 
     this.showScreen('game-screen');
@@ -62,9 +62,9 @@ const Game = {
 
     try {
       this.dataset = await DataLoader.loadGameData(gameId, { signal: this.loadController.signal });
-      if (session !== this.session) return;
+      if (session !== this.session) return false;
     } catch (err) {
-      if (err.name === 'AbortError' || err.code === 'TIMEOUT' && session !== this.session) return;
+      if (err.name === 'AbortError' || err.code === 'TIMEOUT' && session !== this.session) return false;
       console.error(err);
       const reason = err.code === 'SOURCE_NOT_FOUND' ? 'Fișierul de date nu există.' :
         err.code === 'INVALID_JSON' || err.code === 'DATASET_INVALID' ? 'Datele sunt corupte sau invalide.' :
@@ -74,7 +74,7 @@ const Game = {
       this.setBanner(`${reason} Reîncearcă.`, '');
       retry.hidden = false;
       menu.hidden = false;
-      return;
+      return false;
     }
 
     this.questions = this.shuffle([...this.dataset.items]);
@@ -90,6 +90,7 @@ const Game = {
     this.isPlaying = true;
     this.showQuestion();
     this.startTimer();
+    return true;
   },
 
   /* ---------- Input ---------- */

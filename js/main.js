@@ -2,6 +2,7 @@
 /* MAIN - punct de intrare                                       */
 /* ============================================================ */
 const App = {
+  gameOpening: false,
   async init() {
     Theme.init();
     Scoring.loadResults();
@@ -35,15 +36,46 @@ const App = {
     document.addEventListener('game-start', e => {
       this.switchToGame(e.detail.gameId);
     });
-
     document.getElementById('game-back').addEventListener('click', () => {
+      this.cancelGameTransition();
       Game.quit();
       Scoring.showMenu();
     });
   },
-
+  cancelGameTransition() {
+    if (this.transition) {
+      this.transition.remove();
+      this.transition.restoreMenu();
+      this.transition = null;
+    }
+    this.gameOpening = false;
+  },
   async switchToGame(gameId) {
-    await Game.start(gameId);
+    if (this.gameOpening) return;
+    this.gameOpening = true;
+    const transition = Menu.gameTransition(gameId);
+    this.transition = transition;
+    try {
+      if (transition) await transition.zoom;
+      if (transition && this.transition !== transition) return;
+      const ready = await Game.start(gameId);
+      if (!ready || !transition || this.transition !== transition) return;
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const titleHold = Math.max(0, transition.titleVisibleAt + 500 - performance.now());
+      if (titleHold) await new Promise(resolve => setTimeout(resolve, titleHold));
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      if (this.transition === transition) await transition.dismiss();
+    } catch (err) {
+      console.error('Pornirea jocului a eșuat:', err);
+      if (document.getElementById('game-screen').classList.contains('active')) {
+        Game.setBanner('Jocul nu s-a putut pregăti. Reîncearcă.', '');
+        document.getElementById('data-retry').hidden = false;
+        document.getElementById('data-menu').hidden = false;
+      }
+    } finally {
+      if (this.transition === transition) this.cancelGameTransition();
+      else if (!transition) this.gameOpening = false;
+    }
   }
 };
 

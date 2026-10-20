@@ -232,17 +232,30 @@ const Menu = {
         card.style.zIndex = zIndex;
       }
 
-      /* Cardurile invizibile ies complet din compozitie */
-      const hidden = dist > this._maxDist;
-      if (card._hidden !== hidden) {
-        card._hidden = hidden;
-        card.style.visibility = hidden ? 'hidden' : '';
-      }
-      if (hidden) return;
-
       // Subtle tilt for a physical, deck-like feel
       const rotate = (x / sx) * -4;
 
+      /* Repozitionam cardul cat timp este ascuns, inainte de a-l afisa.
+         Nu actualizam cardurile care raman ascunse la fiecare frame. */
+      const hidden = dist > this._maxDist;
+      if (hidden) {
+        if (card._hidden !== true) {
+          card._hidden = true;
+          card.style.visibility = 'hidden';
+          gsap.killTweensOf(card);
+        }
+        return;
+      }
+
+      if (card._hidden === true) {
+        gsap.set(card, { x, y, scale, opacity: animate ? 0 : opacity, rotation: rotate });
+        card._hidden = false;
+        card.style.visibility = '';
+        if (animate) gsap.to(card, { opacity, duration: 0.25, overwrite: 'auto' });
+        return;
+      }
+
+      card._hidden = false;
       if (animate) {
         gsap.to(card, {
           x, y, scale, opacity, rotation: rotate,
@@ -314,6 +327,7 @@ const Menu = {
       this.dragX = 0;
       this.dragY = 0;
       this.cards.forEach(c => gsap.killTweensOf(c));
+      clearTimeout(this._wcId);
       /* Promovam in layere doar pe durata gestului */
       this.setWillChange(true);
       stage.setPointerCapture(e.pointerId);
@@ -375,10 +389,16 @@ const Menu = {
     });
   },
 
-  /** will-change doar cat dureaza miscarea, ca sa nu tinem layere degeaba */
+  /** will-change doar cat dureaza miscarea si doar pentru cardurile
+      care pot fi randate in viewport; cardurile indepartate raman fara layer. */
   setWillChange(on) {
-    this.cards.forEach(c => {
-      c.style.willChange = on ? 'transform, opacity' : '';
+    this.cards.forEach(card => {
+      const distance = Math.max(
+        Math.abs(card._col - this.col),
+        Math.abs(card._row - this.row)
+      );
+      const relevant = distance <= this._maxDist;
+      card.style.willChange = on && relevant ? 'transform, opacity' : '';
     });
   },
 
@@ -412,6 +432,7 @@ const Menu = {
     this.dragY = 0;
     this.axis = null;
     this.layout(true);
+    this.setWillChange(true);
     /* eliberam layerele dupa ce se termina animatia de snap */
     clearTimeout(this._wcId);
     this._wcId = setTimeout(() => this.setWillChange(false), 800);
@@ -488,10 +509,12 @@ const Menu = {
   toggleCard(card) {
     const open = !card.classList.contains('is-flipped');
     this.cards.forEach(other => {
+      if (other !== card) this.resetFlipTab(other);
       other.classList.remove('is-flipped');
       other.querySelector('.card-flip-tab')?.setAttribute('aria-expanded', 'false');
       other.querySelector('.card-back')?.setAttribute('aria-hidden', 'true');
     });
+    this.animateFlipTab(card);
     card.classList.toggle('is-flipped', open);
     card.querySelector('.card-flip-tab')?.setAttribute('aria-expanded', String(open));
     card.querySelector('.card-back')?.setAttribute('aria-hidden', String(!open));
@@ -505,9 +528,28 @@ const Menu = {
     });
   },
 
+  animateFlipTab(card) {
+    const tab = card.querySelector('.card-flip-tab');
+    if (!tab) return;
+    clearTimeout(card._flipTabTimer);
+    tab.classList.add('is-flipping');
+    // Flip-ul dureaza 0.65s; fade-in-ul de 98ms incepe cu 105ms inainte de final.
+    card._flipTabTimer = setTimeout(() => {
+      tab.classList.remove('is-flipping');
+      card._flipTabTimer = null;
+    }, 545);
+  },
+
+  resetFlipTab(card) {
+    clearTimeout(card._flipTabTimer);
+    card._flipTabTimer = null;
+    card.querySelector('.card-flip-tab')?.classList.remove('is-flipping');
+  },
+
   closeFlippedCards() {
     this.cards.forEach(card => {
       if (!card.classList.contains('is-flipped')) return;
+      this.resetFlipTab(card);
       card.classList.remove('is-flipped');
       card.querySelector('.card-flip-tab')?.setAttribute('aria-expanded', 'false');
       card.querySelector('.card-back')?.setAttribute('aria-hidden', 'true');
@@ -574,6 +616,92 @@ const Menu = {
   openGame(gameId) {
     if (!gameId) return;
     document.dispatchEvent(new CustomEvent('game-start', { detail: { gameId } }));
+  },
+
+  gameTransition(gameId) {
+    const card = this.cards.find(c => c.dataset.game === gameId);
+    if (!card || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
+
+    const rect = card.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const overlay = document.createElement('div');
+    overlay.className = 'game-transition';
+    overlay.setAttribute('aria-hidden', 'true');
+    const copy = card.cloneNode(true);
+    copy.classList.add('game-transition-card');
+    copy.classList.remove('is-flipped');
+    copy.querySelector('.card-back')?.remove();
+    const image = copy.querySelector('.card-image');
+    if (image) {
+      const photo = image.querySelector('.card-photo');
+      if (photo) {
+        const blurred = document.createElement('img');
+        blurred.className = 'game-transition-blur';
+        blurred.alt = '';
+        blurred.draggable = false;
+        blurred.onload = () => blurred.classList.add('is-loaded');
+        blurred.onerror = () => blurred.remove();
+        const photoUrl = new URL(DatasetsConfig.get(gameId).image, document.baseURI);
+        image.appendChild(blurred);
+        blurred.src = new URL(`blur/${photoUrl.pathname.split('/').pop()}`, photoUrl).href;
+      }
+      const title = document.createElement('span');
+      title.className = 'game-transition-title';
+      title.textContent = DatasetsConfig.get(gameId)?.title || '';
+      image.appendChild(title);
+    }
+    Object.assign(copy.style, {
+      top: `${rect.top}px`, left: `${rect.left}px`,
+      width: `${rect.width}px`, height: `${rect.height}px`
+    });
+    overlay.appendChild(copy);
+    document.body.appendChild(overlay);
+    gsap.set(copy, { x: 0, y: 0, rotation: 0, scale: 1, opacity: 1 });
+
+    const scale = Math.min(0.8 * window.innerHeight / rect.height,
+      0.9 * window.innerWidth / rect.width);
+    const menuScreen = document.getElementById('menu-screen');
+    let finishDismiss;
+    let finishZoom;
+    let zoomTimer;
+    const transition = {
+      zoom: null,
+      titleVisibleAt: 0,
+      restoreMenu: () => { gsap.killTweensOf(menuScreen); gsap.set(menuScreen, { opacity: 1 }); },
+      dismiss: () => new Promise(resolve => {
+        finishDismiss = resolve;
+        gsap.to(overlay, { opacity: 0, duration: 0.35, ease: 'power2.out',
+          onComplete: () => { overlay.remove(); finishDismiss = null; resolve(); } });
+      }),
+      remove: () => {
+        gsap.killTweensOf(copy);
+        gsap.killTweensOf(overlay);
+        gsap.killTweensOf(menuScreen);
+        zoomTimer.kill();
+        overlay.remove();
+        if (finishZoom) { finishZoom(); finishZoom = null; }
+        if (finishDismiss) { finishDismiss(); finishDismiss = null; }
+      }
+    };
+    const zoom = new Promise(resolve => {
+      finishZoom = resolve;
+      gsap.to(menuScreen, { opacity: 0, duration: 1, ease: 'power2.out' });
+      gsap.to(overlay, { backgroundColor: getComputedStyle(menuScreen).backgroundColor,
+        duration: 1, ease: 'power2.out' });
+      gsap.to(copy, {
+        x: (window.innerWidth - rect.width) / 2 - rect.left,
+        y: (window.innerHeight - rect.height) / 2 - rect.top,
+        scale, duration: 0.85, ease: 'power3.inOut',
+        onComplete: () => {
+          overlay.classList.add('is-ready');
+          // Fade-in-ul titlului dureaza 0.25s (css/menu.css).
+          transition.titleVisibleAt = performance.now() + 250;
+        }
+      });
+      zoomTimer = gsap.delayedCall(1, () => { finishZoom = null; resolve(); });
+    });
+    transition.zoom = zoom;
+    return transition;
   },
 
   // Kept for backwards compatibility with main.js

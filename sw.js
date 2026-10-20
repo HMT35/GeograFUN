@@ -1,7 +1,7 @@
 /* ============================================================ */
 /* SERVICE WORKER - suport offline PWA                           */
 /* ============================================================ */
-const STATIC_CACHE = 'geografun-static-v27';
+const STATIC_CACHE = 'geografun-static-v30';
 // Change this only when the geometry changes. Never mix files from different versions.
 const GEOMETRY_VERSION = '1.0';
 const DATA_CACHE = `geografun-geometry-${GEOMETRY_VERSION}`;
@@ -40,7 +40,14 @@ const PRECACHE_URLS = [
   './assets/images/backgrounds/europe-capitals.jpg',
   './assets/images/backgrounds/romania-counties.jpg',
   './assets/images/backgrounds/romania-capitals.jpg',
-  './assets/images/backgrounds/romania-rivers.jpg'
+  './assets/images/backgrounds/romania-rivers.jpg',
+  './assets/images/backgrounds/blur/world-countries.jpg',
+  './assets/images/backgrounds/blur/europe-countries.jpg',
+  './assets/images/backgrounds/blur/europe-capitals.jpg',
+  './assets/images/backgrounds/blur/europe-marine.jpg',
+  './assets/images/backgrounds/blur/romania-counties.jpg',
+  './assets/images/backgrounds/blur/romania-capitals.jpg',
+  './assets/images/backgrounds/blur/romania-rivers.jpg'
   // Imaginea europe-marine.jpg este intenționat goală până este înlocuită.
 ];
 
