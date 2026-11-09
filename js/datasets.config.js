@@ -14,7 +14,8 @@ const DatasetsConfig = {
     countries: 'assets/data/raw/tari_export.json',
     capitals:  'assets/data/raw/capitale_export.geojson',
     seats:     'assets/data/raw/resedinte_judet_export.geojson',
-    marineEurope: 'assets/data/marine-regions/seavox-europe.geojson'
+    marineEurope: 'assets/data/marine-regions/seavox-europe.geojson',
+    reliefSubunits: 'assets/data/raw/subunitati_relief.geojson'
   },
 
   /* Definitiile exercitiilor */
@@ -59,6 +60,21 @@ const DatasetsConfig = {
     },
 
     /* ---------------- ROMANIA ---------------- */
+
+    'romania-relief-subunits': {
+      source: 'reliefSubunits',
+      kind: 'polygon',
+      region: 'romania',
+      title: 'Subunitățile de relief',
+      icon: '⛰️',
+      funFact: 'Subunitățile urmează regionarea geomorfologică Posea–Badea din 1984, de la grupele montane până la câmpiile joase.',
+      gradient: 'linear-gradient(135deg, #c4a574 0%, #6f8f72 100%)',
+      image: 'assets/images/backgrounds/romania-unitati.jpg',
+      developing: true,
+      nameField: ['name:ro', 'name'],
+      relief: true,
+      view: { center: [45.9, 25.0], zoom: 7 }
+    },
 
     'romania-counties': {
       source: 'counties',
@@ -224,6 +240,13 @@ const DatasetsConfig = {
         'SKAGERRAK': [58.4, 9.1],
         'KATTEGAT': [56.7, 11.3], 'THE SOUND': [55.85, 12.65]
       },
+      /* SeaVoX nu include aceste două strâmtori în exportul european folosit
+         de aplicație. Sunt adăugate ca repere punctuale, la fel ca celelalte
+         strâmtori, pentru a putea fi întrebări selectabile pe hartă. */
+      manualItems: [
+        { id: 'bosfor', name: 'Strâmtoarea Bosfor', center: [41.12, 29.08] },
+        { id: 'dardanele', name: 'Strâmtoarea Dardanele', center: [40.20, 26.55] }
+      ],
       view: { center: [53, 13], zoom: 4, minZoom: 2 }
     },
 
@@ -280,14 +303,17 @@ const DatasetsConfig = {
     }
   },
 
-  /* Ordinea in meniu: [rand][coloana].
+  /* Ordinea in meniu: [rand][coloana vizibila].
      Randul 0 = Lumea, randul 1 = Europa, randul 2 = Romania.
-     Muntii Europei / unitatile de relief lipsesc (nu avem seturi de date). */
+     menuOrigin muta doar numerotarea coloanelor. Camera porneste tot
+     la randul 0, coloana 0. Pe Romania, subunitatile stau la -1,
+     in stanga cardului Județele României. */
   menu: [
     ['world-countries'],
     ['europe-countries', 'europe-capitals', 'europe-marine'],
-    ['romania-counties', 'romania-capitals', 'romania-rivers']
+    ['romania-relief-subunits', 'romania-counties', 'romania-capitals', 'romania-rivers']
   ],
+  menuOrigin: [0, 0, -1],
 
   regionNames: ['Lumea', 'Europa', 'România'],
 

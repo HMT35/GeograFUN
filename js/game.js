@@ -51,6 +51,7 @@ const Game = {
     document.getElementById('game-title').textContent = cfg.title;
     document.getElementById('country-credit').hidden =
       gameId !== 'europe-countries' && gameId !== 'world-countries';
+    document.getElementById('dev-footer').hidden = gameId !== 'romania-relief-subunits';
     document.getElementById('game-timer').textContent = '00:00';
     this.setBanner('Se încarcă datele…', '');
     const retry = document.getElementById('data-retry');

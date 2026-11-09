@@ -5,6 +5,7 @@ const App = {
   gameOpening: false,
   async init() {
     Theme.init();
+    FontSettings.init();
     Scoring.loadResults();
     Menu.init();
     WelcomeScreen.init();

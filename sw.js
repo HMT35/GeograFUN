@@ -1,11 +1,11 @@
 /* ============================================================ */
 /* SERVICE WORKER - suport offline PWA                           */
 /* ============================================================ */
-const STATIC_CACHE = 'geografun-static-v30';
+const STATIC_CACHE = 'geografun-static-v40';
 // Change this only when the geometry changes. Never mix files from different versions.
 const GEOMETRY_VERSION = '1.0';
 const DATA_CACHE = `geografun-geometry-${GEOMETRY_VERSION}`;
-const SOURCE_CACHE = 'geografun-sources-v1.0';
+const SOURCE_CACHE = 'geografun-sources-v1.4';
 let geometryJob = null;
 let foreground = 0;
 
@@ -20,6 +20,7 @@ const PRECACHE_URLS = [
   './css/score.css',
   './css/animations.css',
   './js/theme.js',
+  './js/font.js',
   './js/datasets.config.js',
   './js/data-loader.js',
   './js/geojson-tiles.js',
@@ -41,13 +42,16 @@ const PRECACHE_URLS = [
   './assets/images/backgrounds/romania-counties.jpg',
   './assets/images/backgrounds/romania-capitals.jpg',
   './assets/images/backgrounds/romania-rivers.jpg',
+  './assets/images/backgrounds/romania-unitati.jpg',
   './assets/images/backgrounds/blur/world-countries.jpg',
   './assets/images/backgrounds/blur/europe-countries.jpg',
   './assets/images/backgrounds/blur/europe-capitals.jpg',
   './assets/images/backgrounds/blur/europe-marine.jpg',
   './assets/images/backgrounds/blur/romania-counties.jpg',
   './assets/images/backgrounds/blur/romania-capitals.jpg',
-  './assets/images/backgrounds/blur/romania-rivers.jpg'
+  './assets/images/backgrounds/blur/romania-rivers.jpg',
+  './assets/images/backgrounds/blur/romania-unitati.jpg',
+  './assets/images/relief/romania-dem-autumn.jpg'
   // Imaginea europe-marine.jpg este intenționat goală până este înlocuită.
 ];
 

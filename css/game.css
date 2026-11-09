@@ -72,6 +72,17 @@
 .country-credit[hidden] { display: none; }
 .country-credit a { color: inherit; }
 
+.dev-footer {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text-primary);
+  background: var(--header-bg);
+}
+.dev-footer[hidden] { display: none; }
+
 /* Question banner */
 .question-banner {
   position: absolute;

@@ -17,8 +17,16 @@
       if (savedTheme === 'dark' || savedTheme === 'light') {
         document.documentElement.setAttribute('data-theme', savedTheme);
       }
+      if (localStorage.getItem('geografun-font') === 'inter') {
+        document.documentElement.setAttribute('data-font', 'inter');
+      }
     } catch (_) {}
   </script>
+
+  <!-- Fonturi pentru selectorul de tipografie -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -65,14 +73,19 @@
         <img class="theme-icon" src="assets/icons/theme-moon.svg" alt="" />
       </button>
       <button id="options-toggle" class="options-toggle" type="button" aria-expanded="false" aria-controls="options-panel" aria-label="Deschide opțiunile">⚙</button>
-      <h2 class="menu-logo">GeograFUN</h2>
-      <span class="menu-region" id="menu-region">Europa</span>
+      <h2 class="menu-region" id="menu-region">Lumea</h2>
     </div>
 
     <aside id="options-panel" class="options-panel" hidden aria-label="Opțiuni">
       <h3>Opțiuni</h3>
-      <p>Mai multe opțiuni vor fi disponibile aici.</p>
-      <div class="options-placeholder" aria-hidden="true">În curând</div>
+      <p>Alege cum arată textul de pe carduri.</p>
+      <div class="font-setting" role="group" aria-labelledby="font-setting-label">
+        <span id="font-setting-label" class="setting-label">Font</span>
+        <div class="font-options" role="radiogroup" aria-label="Familia de font">
+          <button class="font-option" type="button" data-font-choice="inter" role="radio" aria-checked="false">Simplu</button>
+          <button class="font-option" type="button" data-font-choice="script" role="radio" aria-checked="false">De mână</button>
+        </div>
+      </div>
     </aside>
 
     <!-- Cardurile sunt generate din js/datasets.config.js -->
@@ -110,6 +123,7 @@
       Multumim geoBoundaries pentru datele furnizate:
       <a href="https://www.geoboundaries.org/www.geoboundaries.org" target="_blank" rel="noopener noreferrer">https://www.geoboundaries.org/www.geoboundaries.org</a>
     </footer>
+    <footer id="dev-footer" class="dev-footer" hidden>Acest joc este în dezvoltare.</footer>
     <div class="game-actions" id="game-actions">
       <button class="confirm-button" id="confirm-button" type="button" hidden disabled aria-label="Confirmă răspunsul">
         <span class="confirm-btn-icon">✓</span>
@@ -165,6 +179,7 @@
   
   <!-- Custom JS -->
   <script src="js/theme.js"></script>
+  <script src="js/font.js"></script>
   <script src="js/datasets.config.js"></script>
   <script src="js/data-loader.js"></script>
   <script src="js/geojson-tiles.js"></script>

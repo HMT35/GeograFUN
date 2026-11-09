@@ -248,7 +248,7 @@ const GeoJSONTiles = {
     return new Layer({ pane: options.pane || 'gfTiles', tileSize: 256, updateWhenZooming: false, keepBuffer: 3,
       className: 'gf-raster-bg', noWrap: false });
   },
-  countyLayer(dataset) {
+  countyLayer(dataset, options = {}) {
     const items = dataset.items.map(item => ({ item,
       bounds: L.geoJSON({ type: 'Feature', geometry: item.geometry }).getBounds() }));
     const Layer = L.Layer.extend({
@@ -278,7 +278,12 @@ const GeoJSONTiles = {
       },
       refreshTheme() {
         const colors = MapViewer.colors();
-        for (const layer of this._entries.values()) layer.setStyle({ color: colors.landStroke, fillColor: colors.land });
+        const transparent = options.style && options.style.fillOpacity === 0;
+        for (const layer of this._entries.values()) {
+          layer.setStyle(transparent
+            ? options.style
+            : { color: colors.landStroke, fillColor: colors.land });
+        }
       },
       update() {
         if (!this._map) return;
@@ -291,8 +296,8 @@ const GeoJSONTiles = {
             if (this._entries.has(item.id)) continue;
             const feature = { type: 'Feature', properties: { gameId: item.id }, geometry: item.geometry };
             const colors = MapViewer.colors();
-            const layer = L.geoJSON(feature, { pane: 'gfTiles', interactive: false,
-              style: { color: colors.landStroke, fillColor: colors.land, weight: 1, fillOpacity: 1 } }).addTo(map);
+            const style = options.style || { color: colors.landStroke, fillColor: colors.land, weight: 1, fillOpacity: 1 };
+            const layer = L.geoJSON(feature, { pane: 'gfTiles', interactive: false, style }).addTo(map);
             this._entries.set(item.id, layer);
             GeoJSONTiles.publish(`county/${item.id}`, feature);
           } else if (this._entries.has(item.id)) {

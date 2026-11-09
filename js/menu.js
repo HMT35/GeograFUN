@@ -50,15 +50,18 @@ const Menu = {
   buildCards() {
     this.stage.innerHTML = '';
     DatasetsConfig.menu.forEach((rowIds, r) => {
-      rowIds.forEach((gameId, c) => {
+      const origin = Number(DatasetsConfig.menuOrigin?.[r]) || 0;
+      rowIds.forEach((gameId, index) => {
         const cfg = DatasetsConfig.get(gameId);
         if (!cfg) return;
-
+        const c = index + origin;
         const card = document.createElement('div');
         card.className = 'card';
         card.dataset.game = gameId;
         card.dataset.row = r;
         card.dataset.col = c;
+        if (cfg.developing) card.classList.add('is-developing');
+        const devLine = cfg.developing ? '<span class="card-dev">în dezvoltare</span>' : '';
         /* Gradientul + iconita raman randate dedesubt, ca fallback vizibil
            daca poza nu se incarca. Poza este opaca si le acopera complet. */
         const photo = cfg.image
@@ -79,11 +82,12 @@ const Menu = {
               ${photo}
             </div>
             <div class="card-label">${cfg.title}</div>
+            ${devLine}
             <button class="card-play" type="button" aria-label="Joacă ${cfg.title}">→</button>
             </div>
             <div class="card-face card-back" aria-hidden="true">
               <div class="card-info-icon" aria-hidden="true">${cfg.icon}</div>
-              <h3>${cfg.title}</h3>
+              <h3>${cfg.title}${devLine}</h3>
               <p class="card-fact">${cfg.funFact || 'Explorează harta și descoperă cât de bine cunoști geografia.'}</p>
               <div class="card-stats" data-stats-for="${gameId}"></div>
             </div>
@@ -130,14 +134,26 @@ const Menu = {
     this.grid = [];
     this.cards.forEach(card => {
       const r = parseInt(card.dataset.row, 10) || 0;
-      const c = parseInt(card.dataset.col, 10) || 0;
-      if (!this.grid[r]) this.grid[r] = [];
+      const c = parseInt(card.dataset.col, 10);
+      if (!Number.isFinite(c)) return;
+      if (!this.grid[r]) this.grid[r] = {};
       this.grid[r][c] = card;
       card._row = r;
       card._col = c;
     });
     this.rows = this.grid.length;
-    this.cols = Math.max(...this.grid.map(r => r.length));
+  },
+
+  rowCols(row) {
+    return Object.keys(this.grid[row] || {}).map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+  },
+
+  /* Pastreaza coloana daca exista pe randul nou; altfel o apropie de cea mai apropiata. */
+  clampCol(row, col) {
+    const cols = this.rowCols(row);
+    if (!cols.length) return 0;
+    if (cols.includes(col)) return col;
+    return cols.reduce((best, value) => Math.abs(value - col) < Math.abs(best - col) ? value : best, cols[0]);
   },
 
   /* ---------------- Geometry ---------------- */
@@ -248,10 +264,29 @@ const Menu = {
       }
 
       if (card._hidden === true) {
-        gsap.set(card, { x, y, scale, opacity: animate ? 0 : opacity, rotation: rotate });
+        if (animate) {
+          const enterX = x + Math.sign(dc) * sx;
+          const enterY = y + Math.sign(dr) * sy;
+          gsap.set(card, {
+            x: enterX,
+            y: enterY,
+            scale: this.FAR_SCALE,
+            opacity: 0,
+            rotation: (enterX / sx) * -4
+          });
+        } else {
+          gsap.set(card, { x, y, scale, opacity, rotation: rotate });
+        }
         card._hidden = false;
         card.style.visibility = '';
-        if (animate) gsap.to(card, { opacity, duration: 0.25, overwrite: 'auto' });
+        if (animate) {
+          gsap.to(card, {
+            x, y, scale, opacity, rotation: rotate,
+            duration: 0.75,
+            ease: 'elastic.out(1, 0.62)',
+            overwrite: 'auto'
+          });
+        }
         return;
       }
 
@@ -277,8 +312,15 @@ const Menu = {
     const region = document.getElementById('menu-region');
     if (region) region.textContent = this.regionNames[this.row] || '';
 
-    document.querySelectorAll('#dots-col .dot').forEach((d, i) => {
-      d.classList.toggle('active', i === this.col);
+    const cols = this.rowCols(this.row);
+    const colDots = document.getElementById('dots-col');
+    if (colDots && colDots.childElementCount !== cols.length) {
+      colDots.innerHTML = '';
+      cols.forEach(() => colDots.appendChild(document.createElement('span')));
+      colDots.querySelectorAll('span').forEach(dot => { dot.className = 'dot'; });
+    }
+    document.querySelectorAll('#dots-col .dot').forEach((dot, index) => {
+      dot.classList.toggle('active', cols[index] === this.col);
     });
     document.querySelectorAll('#dots-row .dot').forEach((d, i) => {
       d.classList.toggle('active', i === this.row);
@@ -290,11 +332,11 @@ const Menu = {
     const rowDots = document.getElementById('dots-row');
     if (colDots) {
       colDots.innerHTML = '';
-      for (let i = 0; i < this.cols; i++) {
+      this.rowCols(this.row).forEach(col => {
         const d = document.createElement('span');
-        d.className = 'dot' + (i === this.col ? ' active' : '');
+        d.className = 'dot' + (col === this.col ? ' active' : '');
         colDots.appendChild(d);
-      }
+      });
     }
     if (rowDots) {
       rowDots.innerHTML = '';
@@ -404,8 +446,11 @@ const Menu = {
 
   /** Rubber-band resistance at the edges of the deck */
   resist(delta, axis) {
-    const atStart = axis === 'x' ? this.col === 0 : this.row === 0;
-    const atEnd = axis === 'x' ? this.col === this.cols - 1 : this.row === this.rows - 1;
+    const cols = this.rowCols(this.row);
+    const min = cols[0] ?? 0;
+    const max = cols[cols.length - 1] ?? 0;
+    const atStart = axis === 'x' ? this.col === min : this.row === 0;
+    const atEnd = axis === 'x' ? this.col === max : this.row === this.rows - 1;
     if ((delta > 0 && atStart) || (delta < 0 && atEnd)) {
       return delta * 0.32;
     }
@@ -417,15 +462,17 @@ const Menu = {
     const threshold = 0.22;
 
     if (this.axis === 'x') {
+      const cols = this.rowCols(this.row);
+      const min = cols[0] ?? 0;
+      const max = cols[cols.length - 1] ?? 0;
       const ratio = this.dragX / this.stepX();
-      if (ratio < -threshold) this.col = Math.min(this.col + 1, this.cols - 1);
-      else if (ratio > threshold) this.col = Math.max(this.col - 1, 0);
+      if (ratio < -threshold) this.col = Math.min(this.col + 1, max);
+      else if (ratio > threshold) this.col = Math.max(this.col - 1, min);
     } else if (this.axis === 'y') {
       const ratio = this.dragY / this.stepY();
       if (ratio < -threshold) this.row = Math.min(this.row + 1, this.rows - 1);
       else if (ratio > threshold) this.row = Math.max(this.row - 1, 0);
-      // Clamp the column if the new row is shorter
-      this.col = Math.min(this.col, (this.grid[this.row] || []).length - 1);
+      this.col = this.clampCol(this.row, this.col);
     }
 
     this.dragX = 0;
@@ -453,7 +500,7 @@ const Menu = {
 
   go(row, col) {
     const r = Math.max(0, Math.min(row, this.rows - 1));
-    const c = Math.max(0, Math.min(col, (this.grid[r] || []).length - 1));
+    const c = this.clampCol(r, col);
     if (r === this.row && c === this.col) return;
     this.closeFlippedCards();
     this.row = r;
@@ -490,6 +537,14 @@ const Menu = {
           }
           this.toggleCard(card);
         });
+      }
+
+      /* Scroll-ul început pe spatele cardului este o excepție: nu trebuie
+         să pornească drag-ul grilei și nici să declanșeze click-ul cardului. */
+      const back = card.querySelector('.card-back');
+      if (back) {
+        back.addEventListener('pointerdown', e => e.stopPropagation());
+        back.addEventListener('click', e => e.stopPropagation());
       }
 
       card.addEventListener('click', e => {
@@ -562,24 +617,28 @@ const Menu = {
     const panel = document.getElementById('options-panel');
     if (!button || !panel || button.dataset.bound) return;
     button.dataset.bound = 'true';
+    let closeTimer = null;
     const close = () => {
       if (panel.hidden || panel.classList.contains('is-closing')) return;
       panel.classList.add('is-closing');
       button.setAttribute('aria-expanded', 'false');
       button.setAttribute('aria-label', 'Deschide opțiunile');
-      window.setTimeout(() => {
+      closeTimer = window.setTimeout(() => {
+        closeTimer = null;
+        if (!panel.classList.contains('is-closing')) return;
         panel.hidden = true;
         panel.classList.remove('is-closing');
       }, 260);
     };
     button.addEventListener('click', () => {
-      const open = panel.hidden;
+      const open = panel.hidden || panel.classList.contains('is-closing');
       if (!open) { close(); return; }
-      panel.hidden = !open;
+      clearTimeout(closeTimer);
+      closeTimer = null;
+      panel.hidden = false;
       panel.classList.remove('is-closing');
-      button.setAttribute('aria-expanded', String(open));
-      button.setAttribute('aria-label', open ? 'Închide opțiunile' : 'Deschide opțiunile');
-      if (open) gsap.fromTo(panel, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' });
+      button.setAttribute('aria-expanded', 'true');
+      button.setAttribute('aria-label', 'Închide opțiunile');
     });
     panel.addEventListener('click', event => event.stopPropagation());
     document.addEventListener('click', event => {
@@ -605,7 +664,7 @@ const Menu = {
   },
 
   activeCard() {
-    return (this.grid[this.row] || [])[this.col] || null;
+    return (this.grid[this.row] || {})[this.col] || null;
   },
 
   openActive() {

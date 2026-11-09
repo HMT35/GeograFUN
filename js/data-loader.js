@@ -14,7 +14,7 @@ const DataLoader = {
   STORE: 'raw',
   _db: null,
   _dbUnavailable: false,
-  CACHE_VERSION: 3,
+  CACHE_VERSION: 4,
   FETCH_TIMEOUT: 12000,
   RETRIES: 2,
 
@@ -351,6 +351,22 @@ const DataLoader = {
         item.id = String(props.id || item.id);
         item.marineType = (cfg.pointNames || []).includes(rawName) ? 'strait' : 'area';
         if (item.marineType === 'strait') item.center = cfg.pointCenters[rawName];
+      }
+    }
+
+    /* Unele repere marine importante nu sunt disponibile in exportul SeaVoX.
+       Configuratia le poate furniza ca puncte, fara geometrie de suprafata. */
+    if (cfg.kind === 'marine' && Array.isArray(cfg.manualItems)) {
+      for (const manual of cfg.manualItems) {
+        if (!manual?.id || !manual.name || !Array.isArray(manual.center)) continue;
+        if (items.some(item => item.id === String(manual.id))) continue;
+        items.push({
+          id: String(manual.id),
+          name: manual.name,
+          geometry: null,
+          center: manual.center,
+          marineType: 'strait'
+        });
       }
     }
 

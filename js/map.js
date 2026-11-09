@@ -46,9 +46,13 @@ const MapViewer = {
   _zoomStart() { if (this.map) this.map._gfZooming = true; },
   _zoomEnd() { if (this.map) this.map._gfZooming = false; },
 
+  isRomaniaGame(gameId = this.currentGameId) {
+    return gameId === 'romania-rivers' || gameId === 'romania-capitals' ||
+      gameId === 'romania-counties' || gameId === 'romania-relief-subunits';
+  },
+
   colors() {
-    if (this.currentGameId === 'romania-rivers' || this.currentGameId === 'romania-capitals' ||
-        this.currentGameId === 'romania-counties') {
+    if (this.isRomaniaGame()) {
       /* Jocurile României folosesc aceeași compoziție vizuală:
          exteriorul este verdele folosit anterior pentru România, iar
          suprafața României rămâne albă pentru contrast. */
@@ -71,6 +75,7 @@ const MapViewer = {
     const c = this.colors();
     const el = document.getElementById('map');
     if (el) el.style.background = c.sea;
+    if (this._landBackdrop) this._landBackdrop.setStyle({ color: c.landStroke, fillColor: c.land, weight: 1, fillOpacity: 1 });
     if (this.tileLayer) this.tileLayer.refreshTheme();
     if (this.marineLayer) this.marineLayer.refreshTheme();
     if (this.rasterLayer) this.rasterLayer.refreshTheme();
@@ -86,6 +91,8 @@ const MapViewer = {
       this.map = null;
     }
     this.tileLayer = null;
+    this._reliefImage = null;
+    this._landBackdrop = null;
     this.marineLayer = null;
     this.rasterLayer = null;
     this.detailLayer = null;
@@ -105,8 +112,7 @@ const MapViewer = {
       minZoom: Number.isFinite(view.minZoom) ? view.minZoom : 3,
       maxZoom: 12
     });
-    this.map.getContainer().classList.toggle('romania-palette',
-      gameId === 'romania-rivers' || gameId === 'romania-capitals' || gameId === 'romania-counties');
+    this.map.getContainer().classList.toggle('romania-palette', this.isRomaniaGame(gameId));
     // Keep Leaflet's SVG clip bounds aligned with the moving map. This is
     // needed for streamed country geometry as well as the marine overlay;
     // the frame guard in _scheduleRendererRefresh prevents duplicate work.
@@ -115,6 +121,9 @@ const MapViewer = {
     this.map.on('zoomend', this._zoomEnd, this);
 
     /* Singurele straturi ale hărții sunt tile-urile enriched. */
+    this.map.createPane('gfRelief');
+    this.map.getPane('gfRelief').style.zIndex = 180;
+    this.map.getPane('gfRelief').style.pointerEvents = 'none';
     this.map.createPane('gfTiles');
     this.map.getPane('gfTiles').style.zIndex = 200;
     this.map.createPane('gfSimple');
@@ -144,12 +153,20 @@ const MapViewer = {
   async addTiledBackground() {
     const map = this.map;
     try {
-      if (this.currentGameId === 'romania-counties' || this.currentGameId === 'romania-capitals') {
-        const counties = this.currentGameId === 'romania-counties'
-          ? this._backgroundDataset
-          : await DataLoader.loadGameData('romania-counties');
+      if (this.currentGameId === 'romania-counties' || this.currentGameId === 'romania-capitals' ||
+          this.currentGameId === 'romania-relief-subunits') {
+        const polygons = this.currentGameId === 'romania-capitals'
+          ? await DataLoader.loadGameData('romania-counties')
+          : this._backgroundDataset;
         if (map !== this.map) return;
-        this.tileLayer = GeoJSONTiles.countyLayer(counties).addTo(map);
+        if (this.currentGameId === 'romania-relief-subunits') {
+          await this.addReliefDem(map);
+          if (map !== this.map) return;
+          map.attributionControl.addAttribution('Relief: AWS Terrain Tiles; subunități: Posea și Badea, 1984 / geo-spatial.org');
+        }
+        this.tileLayer = GeoJSONTiles.countyLayer(polygons, this.currentGameId === 'romania-relief-subunits'
+          ? { style: { color: '#5c4632', weight: 1.15, fillOpacity: 0, opacity: 0.9 } }
+          : {}).addTo(map);
         return;
       }
       const countries = await GeoJSONTiles.manifest('assets/data/countries-enriched/manifest.json');
@@ -216,6 +233,20 @@ const MapViewer = {
     }
   },
 
+  async addReliefDem(map) {
+    const url = 'assets/images/relief/romania-dem-autumn.jpg';
+    await new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = resolve;
+      image.onerror = () => reject(new Error('DEM indisponibil'));
+      image.src = url;
+    });
+    if (map !== this.map || !map.getPane('gfRelief')) return;
+    this._reliefImage = L.imageOverlay(url, [[43.5, 20.0], [48.4, 30.0]], {
+      pane: 'gfRelief', interactive: false, className: 'gf-relief-dem'
+    }).addTo(map);
+  },
+
   /* Incadreaza harta pe intreg setul de date */
   fitToDataset(dataset) {
     if (!this.map || !dataset || !dataset.items.length) return;
@@ -275,6 +306,8 @@ const MapViewer = {
       this.map = null;
     }
     this.tileLayer = null;
+    this._reliefImage = null;
+    this._landBackdrop = null;
     this.marineLayer = null;
     this.rasterLayer = null;
     this.detailLayer = null;
