@@ -3,21 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#000000" />
+  <meta name="theme-color" content="#eef1f8" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="assets/icons/icon-192.svg" type="image/svg+xml" />
-  <title>Istm</title>
+  <title>GeograFUN</title>
   <script>
-    /* Negru până știm tema. Prima vizită e light; altfel rămâne setarea salvată. */
+    /* Tema e cunoscută înainte de primul cadru. Prima vizită e light. */
     try {
       const savedTheme = localStorage.getItem('geografun-theme');
       const theme = savedTheme === 'dark' ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', theme);
       const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', theme === 'dark' ? '#667eea' : '#4ec8e8');
+      if (meta) meta.setAttribute('content', theme === 'dark' ? '#0a0a1a' : '#eef1f8');
       if (localStorage.getItem('geografun-font') === 'inter') {
         document.documentElement.setAttribute('data-font', 'inter');
       }
@@ -44,11 +44,9 @@
   <!-- ============================================ -->
   <!-- WELCOME SCREEN                               -->
   <!-- ============================================ -->
-  <section id="welcome-screen" class="screen active" role="dialog" aria-label="Istm">
+  <section id="welcome-screen" class="screen active" role="dialog" aria-label="GeograFUN">
     <div class="welcome-container">
-      <h1 class="welcome-title">Istm</h1>
-      <span class="welcome-rule" aria-hidden="true"></span>
-      <p class="welcome-definition">Fâșie îngustă de uscat care leagă două uscaturi și desparte două ape.</p>
+      <h1 class="welcome-title">GeograFUN</h1>
     </div>
   </section>
 

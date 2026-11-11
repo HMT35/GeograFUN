@@ -53,7 +53,7 @@ const Theme = {
     const splashOn = splash && splash.classList.contains('active');
     if (meta) {
       meta.setAttribute('content', splashOn
-        ? (theme === 'light' ? '#4ec8e8' : '#667eea')
+        ? (theme === 'light' ? '#eef1f8' : '#0a0a1a')
         : (theme === 'light' ? '#f4f5fa' : '#1a1a2e'));
     }
 

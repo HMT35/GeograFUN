@@ -2,20 +2,9 @@
 /* WELCOME SCREEN                               */
 /* ============================================ */
 #welcome-screen {
-  background: #000;
+  background: var(--bg-primary);
   z-index: 100;
   transform-origin: center center;
-}
-
-html[data-theme="light"] #welcome-screen {
-  background:
-    radial-gradient(ellipse 90% 60% at 50% 38%, rgba(255, 255, 255, 0.42), transparent 70%),
-    #4ec8e8;
-}
-html[data-theme="dark"] #welcome-screen {
-  background:
-    radial-gradient(ellipse 90% 60% at 50% 38%, rgba(255, 255, 255, 0.16), transparent 68%),
-    #667eea;
 }
 
 .welcome-container {
@@ -26,42 +15,19 @@ html[data-theme="dark"] #welcome-screen {
   align-items: center;
   width: 100%;
   padding: 32px;
-  padding-bottom: 12vh;
   padding-left: max(32px, env(safe-area-inset-left));
   padding-right: max(32px, env(safe-area-inset-right));
 }
 
-.welcome-title,
-.welcome-definition {
+.welcome-title {
   font-family: Inter, Roboto, sans-serif;
   margin: 0;
-}
-
-.welcome-title {
-  font-size: clamp(3.4rem, 14vw, 5.75rem);
-  font-weight: 500;
-  line-height: 0.95;
-  letter-spacing: 0.04em;
+  max-width: 100%;
+  font-size: clamp(2.5rem, 11vw, 4.75rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
   text-align: center;
-  color: #fff;
+  color: var(--text-primary);
 }
 
-.welcome-rule {
-  width: 2.25rem;
-  height: 1px;
-  margin: 1.35rem 0 1.2rem;
-  background: rgba(255, 255, 255, 0.55);
-}
-
-.welcome-definition {
-  width: min(22rem, 100%);
-  font-size: 1.2rem;
-  font-weight: 300;
-  line-height: 1.45;
-  text-align: left;
-  color: rgba(255, 255, 255, 0.78);
-}
-
-html[data-theme="light"] .welcome-title { color: #12324a; }
-html[data-theme="light"] .welcome-rule { background: rgba(18, 50, 74, 0.35); }
-html[data-theme="light"] .welcome-definition { color: rgba(18, 50, 74, 0.72); }

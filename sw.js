@@ -1,7 +1,7 @@
 /* ============================================================ */
 /* SERVICE WORKER - suport offline PWA                           */
 /* ============================================================ */
-const STATIC_CACHE = 'geografun-static-v47';
+const STATIC_CACHE = 'geografun-static-v48';
 // Change this only when the geometry changes. Never mix files from different versions.
 const GEOMETRY_VERSION = '1.0';
 const DATA_CACHE = `geografun-geometry-${GEOMETRY_VERSION}`;
