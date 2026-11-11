@@ -12,13 +12,15 @@ const App = {
     this.setupEventListeners();
     Scoring.updateCardGlows();
 
-    await WelcomeScreen.show();
+    await WelcomeScreen.hold();
 
     document.getElementById('menu-screen').classList.add('active');
 
     /* Layout-ul se re-declanseaza singur cand stage-ul are dimensiuni reale,
        deci pornim animatia de intrare abia dupa ce pozitiile sunt asezate. */
     Menu.layout(false);
+    const exit = WelcomeScreen.depart();
+    await new Promise(resolve => setTimeout(resolve, exit.revealAt));
     requestAnimationFrame(() => {
       gsap.from('.card', {
         opacity: 0,
@@ -28,6 +30,7 @@ const App = {
         stagger: 0.04
       });
     });
+    await exit.done;
 
     /* Nu preîncărcăm alte jocuri sau hărți legacy. Datele metadata pentru
        jocul ales sunt încărcate la pornirea acelui joc. */

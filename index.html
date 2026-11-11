@@ -3,20 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="theme-color" content="#000000" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="assets/icons/icon-192.svg" type="image/svg+xml" />
-  <title>GeograFUN</title>
+  <title>Istm</title>
   <script>
-    /* Aplică alegerea salvată înainte de primul frame, fără flash light/dark. */
+    /* Negru până știm tema. Prima vizită e light; altfel rămâne setarea salvată. */
     try {
       const savedTheme = localStorage.getItem('geografun-theme');
-      if (savedTheme === 'dark' || savedTheme === 'light') {
-        document.documentElement.setAttribute('data-theme', savedTheme);
-      }
+      const theme = savedTheme === 'dark' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', theme === 'dark' ? '#667eea' : '#4ec8e8');
       if (localStorage.getItem('geografun-font') === 'inter') {
         document.documentElement.setAttribute('data-font', 'inter');
       }
@@ -26,7 +27,7 @@
   <!-- Fonturi pentru selectorul de tipografie -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -43,24 +44,11 @@
   <!-- ============================================ -->
   <!-- WELCOME SCREEN                               -->
   <!-- ============================================ -->
-  <section id="welcome-screen" class="screen active" role="dialog" aria-label="Bine ai venit">
+  <section id="welcome-screen" class="screen active" role="dialog" aria-label="Istm">
     <div class="welcome-container">
-      <div class="welcome-icon">
-        <svg viewBox="0 0 100 100" width="80" height="80">
-          <circle cx="50" cy="50" r="45" fill="none" stroke="#fff" stroke-width="2" class="globe-circle" />
-          <ellipse cx="50" cy="50" rx="40" ry="20" fill="none" stroke="#fff" stroke-width="1" class="globe-ellipse" />
-          <line x1="10" y1="50" x2="90" y2="50" stroke="#fff" stroke-width="0.5" class="globe-line" />
-          <line x1="50" y1="10" x2="50" y2="90" stroke="#fff" stroke-width="0.5" />
-          <path d="M25,25 Q50,40 75,25" fill="none" stroke="#fff" stroke-width="0.5" />
-          <path d="M25,75 Q50,60 75,75" fill="none" stroke="#fff" stroke-width="0.5" />
-        </svg>
-      </div>
-      <h1 class="welcome-title">Bine ai venit</h1>
-      <p class="welcome-subtitle">GeograFUN</p>
-      <p class="welcome-description">Învață geografia interactiv</p>
-      <div class="welcome-loader">
-        <span></span><span></span><span></span>
-      </div>
+      <h1 class="welcome-title">Istm</h1>
+      <span class="welcome-rule" aria-hidden="true"></span>
+      <p class="welcome-definition">Fâșie îngustă de uscat care leagă două uscaturi și desparte două ape.</p>
     </div>
   </section>
 

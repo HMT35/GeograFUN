@@ -16,10 +16,7 @@ const Theme = {
 
   init() {
     const saved = this.saved();
-    const prefersLight = window.matchMedia &&
-      window.matchMedia('(prefers-color-scheme: light)').matches;
-
-    this.apply(saved || (prefersLight ? 'light' : 'dark'), false);
+    this.apply(saved || 'light', false);
 
     this.buttons = Array.from(document.querySelectorAll('.theme-toggle'));
     this.buttons.forEach(btn => btn.addEventListener('click', e => {
@@ -40,7 +37,7 @@ const Theme = {
   },
 
   current() {
-    return document.documentElement.getAttribute('data-theme') || 'dark';
+    return document.documentElement.getAttribute('data-theme') || 'light';
   },
 
   toggle() {
@@ -52,7 +49,13 @@ const Theme = {
     document.documentElement.setAttribute('data-theme', theme);
 
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'light' ? '#f4f5fa' : '#1a1a2e');
+    const splash = document.getElementById('welcome-screen');
+    const splashOn = splash && splash.classList.contains('active');
+    if (meta) {
+      meta.setAttribute('content', splashOn
+        ? (theme === 'light' ? '#4ec8e8' : '#667eea')
+        : (theme === 'light' ? '#f4f5fa' : '#1a1a2e'));
+    }
 
     if (persist) {
       try { localStorage.setItem(this.KEY, theme); } catch (_) {}

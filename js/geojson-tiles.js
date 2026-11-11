@@ -277,13 +277,13 @@ const GeoJSONTiles = {
         });
       },
       refreshTheme() {
+        for (const layer of this._entries.values()) layer.setStyle(this._polygonStyle());
+      },
+      _polygonStyle() {
         const colors = MapViewer.colors();
-        const transparent = options.style && options.style.fillOpacity === 0;
-        for (const layer of this._entries.values()) {
-          layer.setStyle(transparent
-            ? options.style
-            : { color: colors.landStroke, fillColor: colors.land });
-        }
+        if (typeof options.style === 'function') return options.style(colors);
+        if (options.style) return options.style;
+        return { color: colors.landStroke, fillColor: colors.land, weight: 1, fillOpacity: 1 };
       },
       update() {
         if (!this._map) return;
@@ -295,9 +295,7 @@ const GeoJSONTiles = {
           if (wanted.intersects(bounds)) {
             if (this._entries.has(item.id)) continue;
             const feature = { type: 'Feature', properties: { gameId: item.id }, geometry: item.geometry };
-            const colors = MapViewer.colors();
-            const style = options.style || { color: colors.landStroke, fillColor: colors.land, weight: 1, fillOpacity: 1 };
-            const layer = L.geoJSON(feature, { pane: 'gfTiles', interactive: false, style }).addTo(map);
+            const layer = L.geoJSON(feature, { pane: 'gfTiles', interactive: false, style: this._polygonStyle() }).addTo(map);
             this._entries.set(item.id, layer);
             GeoJSONTiles.publish(`county/${item.id}`, feature);
           } else if (this._entries.has(item.id)) {
@@ -381,6 +379,9 @@ const GeoJSONTiles = {
       _style(entry, colors, tier = null) {
         if (options.darkFast && entry.iso3 === 'ROU' && tier === 'fast') {
           return { color: '#17233a', fillColor: '#101827', opacity: 0.7, fillOpacity: 0.7 };
+        }
+        if (entry.iso3 === 'ROU' && MapViewer.usesReliefDem && MapViewer.usesReliefDem()) {
+          return { color: colors.landStroke, fillColor: colors.land, opacity: 0.9, fillOpacity: 0, weight: 1.1 };
         }
         return entry.lowContrast
           ? { color: colors.landStroke, fillColor: colors.land, opacity: 0.35, fillOpacity: 0.22 }

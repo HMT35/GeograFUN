@@ -51,11 +51,22 @@ const MapViewer = {
       gameId === 'romania-counties' || gameId === 'romania-relief-subunits';
   },
 
+  isLight() {
+    return document.documentElement.getAttribute('data-theme') === 'light';
+  },
+
+  showsReliefImage(gameId = this.currentGameId) {
+    return gameId === 'romania-relief-subunits' || gameId === 'romania-rivers';
+  },
+
+  usesReliefDem() {
+    return this.showsReliefImage();
+  },
+
   colors() {
     if (this.isRomaniaGame()) {
-      /* Jocurile României folosesc aceeași compoziție vizuală:
-         exteriorul este verdele folosit anterior pentru România, iar
-         suprafața României rămâne albă pentru contrast. */
+      /* Light: verdele deschis și suprafața albă. Dark: aceeași paletă ca la celelalte jocuri. */
+      if (!this.isLight()) return { sea: '#0a1224', land: '#20263c', landStroke: '#7281a5' };
       return { sea: '#c5e8bd', land: '#ffffff', landStroke: '#6f9f68' };
     }
     if (this.currentGameId === 'europe-countries' || this.currentGameId === 'europe-capitals' ||
@@ -79,6 +90,7 @@ const MapViewer = {
     if (this.tileLayer) this.tileLayer.refreshTheme();
     if (this.marineLayer) this.marineLayer.refreshTheme();
     if (this.rasterLayer) this.rasterLayer.refreshTheme();
+    this.syncReliefDem();
   },
 
   async loadMap(gameId, dataset) {
@@ -91,7 +103,8 @@ const MapViewer = {
       this.map = null;
     }
     this.tileLayer = null;
-    this._reliefImage = null;
+    this._reliefLight = null;
+    this._reliefDark = null;
     this._landBackdrop = null;
     this.marineLayer = null;
     this.rasterLayer = null;
@@ -153,19 +166,22 @@ const MapViewer = {
   async addTiledBackground() {
     const map = this.map;
     try {
+      if (this.showsReliefImage()) {
+        await this.addReliefDem(map);
+        if (map !== this.map) return;
+        const credit = this.currentGameId === 'romania-rivers'
+          ? 'Relief: AWS Terrain Tiles'
+          : 'Relief: AWS Terrain Tiles; subunități: Posea și Badea, 1984 / geo-spatial.org';
+        map.attributionControl.addAttribution(credit);
+      }
       if (this.currentGameId === 'romania-counties' || this.currentGameId === 'romania-capitals' ||
           this.currentGameId === 'romania-relief-subunits') {
         const polygons = this.currentGameId === 'romania-capitals'
           ? await DataLoader.loadGameData('romania-counties')
           : this._backgroundDataset;
         if (map !== this.map) return;
-        if (this.currentGameId === 'romania-relief-subunits') {
-          await this.addReliefDem(map);
-          if (map !== this.map) return;
-          map.attributionControl.addAttribution('Relief: AWS Terrain Tiles; subunități: Posea și Badea, 1984 / geo-spatial.org');
-        }
         this.tileLayer = GeoJSONTiles.countyLayer(polygons, this.currentGameId === 'romania-relief-subunits'
-          ? { style: { color: '#5c4632', weight: 1.15, fillOpacity: 0, opacity: 0.9 } }
+          ? { style: () => this.subunitStyle() }
           : {}).addTo(map);
         return;
       }
@@ -233,18 +249,49 @@ const MapViewer = {
     }
   },
 
+  subunitStyle() {
+    if (this.showsReliefImage()) {
+      return this.isLight()
+        ? { color: '#5c4632', weight: 1.15, fillOpacity: 0, opacity: 0.9 }
+        : { color: '#c5ccd8', weight: 1.15, fillOpacity: 0, opacity: 0.85 };
+    }
+    const colors = this.colors();
+    return { color: colors.landStroke, fillColor: colors.land, weight: 1, fillOpacity: 1, opacity: 1 };
+  },
+
+  reliefBounds() {
+    return [[43.5, 20.0], [48.4, 30.0]];
+  },
+
+  syncReliefDem() {
+    if (!this.map || !this._reliefLight || !this._reliefDark) return;
+    if (!this.showsReliefImage()) {
+      if (this.map.hasLayer(this._reliefLight)) this.map.removeLayer(this._reliefLight);
+      if (this.map.hasLayer(this._reliefDark)) this.map.removeLayer(this._reliefDark);
+      return;
+    }
+    if (!this.map.hasLayer(this._reliefLight)) this._reliefLight.addTo(this.map);
+    if (!this.map.hasLayer(this._reliefDark)) this._reliefDark.addTo(this.map);
+    const light = this.isLight();
+    this._reliefLight.setOpacity(light ? 1 : 0);
+    this._reliefDark.setOpacity(light ? 0 : 1);
+  },
+
   async addReliefDem(map) {
-    const url = 'assets/images/relief/romania-dem-autumn.jpg';
-    await new Promise((resolve, reject) => {
+    const urls = ['assets/images/relief/romania-dem-autumn.jpg', 'assets/images/relief/romania-dem-dark.jpg'];
+    await Promise.all(urls.map(url => new Promise((resolve, reject) => {
       const image = new Image();
       image.onload = resolve;
       image.onerror = () => reject(new Error('DEM indisponibil'));
       image.src = url;
-    });
+    })));
     if (map !== this.map || !map.getPane('gfRelief')) return;
-    this._reliefImage = L.imageOverlay(url, [[43.5, 20.0], [48.4, 30.0]], {
-      pane: 'gfRelief', interactive: false, className: 'gf-relief-dem'
-    }).addTo(map);
+    const bounds = this.reliefBounds();
+    const light = this.isLight();
+    const common = { pane: 'gfRelief', interactive: false, className: 'gf-relief-dem' };
+    this._reliefLight = L.imageOverlay(urls[0], bounds, { ...common, opacity: light ? 1 : 0 });
+    this._reliefDark = L.imageOverlay(urls[1], bounds, { ...common, opacity: light ? 0 : 1 });
+    this.syncReliefDem();
   },
 
   /* Incadreaza harta pe intreg setul de date */
@@ -306,7 +353,8 @@ const MapViewer = {
       this.map = null;
     }
     this.tileLayer = null;
-    this._reliefImage = null;
+    this._reliefLight = null;
+    this._reliefDark = null;
     this._landBackdrop = null;
     this.marineLayer = null;
     this.rasterLayer = null;

@@ -223,11 +223,16 @@
 /* Leaflet overrides */
 .leaflet-container {
   background: var(--map-bg) !important;
+  transition: background-color 0.35s ease;
 }
 
-/* Jocurile României: exteriorul hărții păstrează verdele deschis,
-   iar geometria României este randată separat, cu umplere albă. */
-.leaflet-container.romania-palette {
+.gf-relief-dem {
+  transition: opacity 0.35s ease;
+}
+
+/* Light mode: exteriorul României rămâne verdele deschis.
+   Dark mode folosește același fundal ca celelalte jocuri. */
+[data-theme="light"] .leaflet-container.romania-palette {
   background: #c5e8bd !important;
 }
 
